@@ -113,20 +113,19 @@ h_interrupt:
 		cp      gamestate_title
 		jr      nz, h_interrupt_cont		; need to do the sine scroller, or keep going
 		
-sine_scroller:		
+sine_scroller:
 		in		a, (PORT_VLINE)
+
 		cp      $bf							; break at a guaranteed point
 		jr		nz, sine_noinc
 		ld      bc, (VAR_sin_cnt)
-		inc     c
+		inc		c
 		ld      (VAR_sin_cnt), bc
 		
 sine_noinc:
-		; Only scroll the banner :3
-		;sub		$88
-		;jp		M, h_interrupt_cont			; negative, jump!
-		;in		a, (PORT_VLINE)
-		
+		cp		$68							; Only scroll the banner :3
+		jp		M, sine_noscroll			; negative, jump!
+
 		; Add it to a
 		ld      bc, (VAR_sin_cnt)
 		add     a, c
@@ -139,7 +138,13 @@ sine_noinc:
 		ld      e, (hl)				; set our de to $88 + horiz scroll wave
 		ld      d, VREG_HSCROLL
 		rst     10h
-		
+	
+		jp		interrupt_end
+	
+sine_noscroll:
+		ld		de, $8800
+		rst		10h
+	
 h_interrupt_cont:
 		; Do something else
 		
@@ -333,7 +338,7 @@ title_screen_init:
 		ld		hl, title_palette
 		call 	palette_set_init		; Set initial palette
 		
-		ld      bc, VRAM_TILE_SIZE*$A5
+		ld      bc, VRAM_TILE_SIZE*$BD
 		ld      hl, yuslogo_data
 		ld      de, $0000
 		call    vdp_load_data
