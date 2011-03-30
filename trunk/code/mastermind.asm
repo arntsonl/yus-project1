@@ -116,15 +116,15 @@ h_interrupt:
 sine_scroller:
 		in		a, (PORT_VLINE)
 
-		cp      $bf							; break at a guaranteed point
-		jr		nz, sine_noinc
+		cp      $bf							; only increment our sine-lookup index 
+		jr		nz, sine_noinc				;  once per update
 		ld      bc, (VAR_sin_cnt)
 		inc		c
 		ld      (VAR_sin_cnt), bc
 		
 sine_noinc:
 		cp		$68							; Only scroll the banner :3
-		jp		M, sine_noscroll			; negative, jump!
+		jp		M, sine_noscroll			; negative, gtfo out of here..
 
 		; Add it to a
 		ld      bc, (VAR_sin_cnt)
@@ -142,7 +142,7 @@ sine_noinc:
 		jp		interrupt_end
 	
 sine_noscroll:
-		ld		de, $8800
+		ld		de, $8800			; resets this horizontal line to 0
 		rst		10h
 	
 h_interrupt_cont:
