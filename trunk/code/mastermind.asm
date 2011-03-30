@@ -122,6 +122,11 @@ sine_scroller:
 		ld      (VAR_sin_cnt), bc
 		
 sine_noinc:
+		; Only scroll the banner :3
+		;sub		$88
+		;jp		M, h_interrupt_cont			; negative, jump!
+		;in		a, (PORT_VLINE)
+		
 		; Add it to a
 		ld      bc, (VAR_sin_cnt)
 		add     a, c
