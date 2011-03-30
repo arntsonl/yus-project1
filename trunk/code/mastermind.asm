@@ -328,13 +328,13 @@ title_screen_init:
 		ld		hl, title_palette
 		call 	palette_set_init		; Set initial palette
 		
-		ld      bc, VRAM_TILE_SIZE*$7F
-		ld      hl, gamebg_data
+		ld      bc, VRAM_TILE_SIZE*$A5
+		ld      hl, yuslogo_data
 		ld      de, $0000
 		call    vdp_load_data
 		
 		ld        bc, $600
-		ld        hl, gametilemap_data
+		ld        hl, yustilemap_data
 		ld        de, VRAM_BG_MAP
 		call      vdp_load_data
 		
@@ -345,8 +345,25 @@ title_screen_init:
 
 ; Game_Screen_Init -----------------------------------------------------------
 game_screen_init:
+		ld      de, $8100                   ; Disable display
+        rst     $10
+		
 		ld		hl, ingame_palette
 		call 	palette_set_init		; Set initial palette
+		
+		ld      bc, VRAM_TILE_SIZE*$a5
+		ld      hl, gamebg_data
+		ld      de, $0000
+		call    vdp_load_data
+		
+		ld        bc, $600
+		ld        hl, gametilemap_data
+		ld        de, VRAM_BG_MAP
+		call      vdp_load_data
+		
+		ld      de, $81C0                   ; Enable display
+        rst     $10
+		
 		
 		ld		de, $8800					; reset our horizontal scroll
 		rst		$10
@@ -371,12 +388,12 @@ game_input:
 		
 ;------------------------------------------------------------------------------
 title_palette:
-.DB $00 $01 $01 $00 $02 $15 $17 $15 $16 $2A $2A $27 $2A $2A $3F $3F
-.DB $33 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F
+.db $00 $10 $14 $15 $06 $18 $1A $1B $1C $1E $0F $1F $3F $00 $00 $00 ; bg
+.db $33 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F ; spr
 
 ingame_palette:
-.DB $33 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F
-.DB $00 $01 $01 $00 $02 $15 $17 $15 $16 $2A $2A $27 $2A $2A $3F $3F
+.db $10 $11 $22 $14 $34 $17 $18 $09 $38 $0B $1C $0E $3D $1E $0F $3F ; bg
+.db $00 $01 $01 $00 $02 $15 $17 $15 $16 $2A $2A $27 $2A $2A $3F $3F ; spr
 
 ;------------------------------------------------------------------------------
 ;sprites_data:
@@ -387,6 +404,12 @@ gamebg_data:
 
 gametilemap_data:
 .INCLUDE "tilemap.inc"
+
+yuslogo_data:
+.include "yuslogo.inc"
+
+yustilemap_data:
+.include "yustilemap.inc"
 
 wave_lut:
 .include "out.inc"
