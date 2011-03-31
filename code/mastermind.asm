@@ -429,15 +429,14 @@ game_screen_init:
 	ld		hl, ingame_palette
 	call 	palette_set_init		; Set initial palette
 	
-	ld      bc, VRAM_TILE_SIZE*$a5
-	ld      hl, gamebg_data
-	ld      de, $0000
-	call    vdp_load_data
+	ld		de, VRAM_TILES|$4000
+	ld		hl, gamebg_data
+	call	LoadTiles4BitRLENoDI
 	
-	ld        bc, $600
-	ld        hl, gametilemap_data
-	ld        de, VRAM_BG_MAP
-	call      vdp_load_data
+	ld      bc, $600
+	ld      hl, gametilemap_data
+	ld      de, VRAM_BG_MAP
+	call    vdp_load_data
 	
 	ld      de, $81C0                   ; Enable display
 	rst     $10
@@ -486,7 +485,7 @@ game_input:
 ;.INCLUDE "sprites.inc"
 .section "Game Background" superfree
 	gamebg_data:
-	.INCLUDE "game_bg.inc"
+	.INCBIN "board.pscompr"
 
 	gametilemap_data:
 	.INCLUDE "tilemap.inc"
