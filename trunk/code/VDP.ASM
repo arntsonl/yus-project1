@@ -9,6 +9,7 @@
 ;----------------------------------------------------------------------------
 ; no parameters
 ;----------------------------------------------------------------------------
+.section "VDP Init" free
 vdp_init:
                 in      a, (VDP_STATUS)         ; Read VDP status once
                 ld      hl, vdp_init_table      ; before using VDP
@@ -30,7 +31,7 @@ vdp_clear_loop:                                 ;
                 dec     bc                      ;
                 ld      a, b                    ;
                 or      c                       ;
-                jr      nz, vdp_clear_loop      ;
+                jr      nz, vdp_clear_loop      ;	
 ; VDP_DISABLE_SPRITES() -----------------------------------------------------
 ; Clear sprites (by setting the first sprite position to 208)
 ;----------------------------------------------------------------------------
@@ -42,11 +43,15 @@ vdp_disable_sprites:
                 ld      a, VRAM_SPR_LAST        ;
                 out     (VDP_DATA), a           ;
                 ret
+.ends	
+			
 ;----------------------------------------------------------------------------
+.section "VDP Init Table" free
 vdp_init_table:
 .db             $16, $80,  $80, $81,  $FF, $82,  $FF, $83,  $FF, $84
 .db             $FF, $85,  $FB, $86,  $00, $87,  $00, $88,  $00, $89
 .db             $00, $8A
+.ends
 ;----------------------------------------------------------------------------
 
 ; VDP_LOAD_DATA() -----------------------------------------------------------
@@ -56,6 +61,7 @@ vdp_init_table:
 ; hl = source in ROM/RAM
 ; de = destination in VRAM
 ;----------------------------------------------------------------------------
+.section "VDP Load Data" free
 vdp_load_data:
                 push    hl
                 rst     $18                     ; Set VDP address to DE
@@ -69,7 +75,7 @@ vdp_load_data_loop:
                 jr      nz, vdp_load_data_loop
                 pop     hl
                 ret
-	
+.ends
 ;----------------------------------------------------------------------------
 
 ; VDP_BG_PUTTILE() ----------------------------------------------------------
@@ -80,6 +86,7 @@ vdp_load_data_loop:
 ;  e = attribute (bit 0 must not be set)
 ; hl = VRAM address
 ;----------------------------------------------------------------------------
+.section "VDP Put Tile" free
 vdp_bg_puttile:
                 rst     $28                     ; Set VDP address to HL
                 push    ix
@@ -93,10 +100,12 @@ vdp_bg_puttile_x:
                 out     (VDP_DATA), a
                 djnz    vdp_bg_puttile_x
                 ret
+.ends
 ;----------------------------------------------------------------------------
 ;  Wait for the vrame update..
 ;
 ;----------------------------------------------------------------------------
+.section "VDP One Frame" free
 vdp_frame_one:
         ;ld      b, 1
 vdp_frame:
@@ -113,3 +122,4 @@ vdp_frame_loop:
         ;dec     b
 		;jr      nz, vdp_frame
 		ret
+.ends
