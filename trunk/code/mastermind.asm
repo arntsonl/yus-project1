@@ -23,7 +23,7 @@
 	banks 2
 .ENDRO
 
-.sdsctag 0.51,"Hivemind","A Mastermind SMS game","Team YUS"
+.sdsctag 1.0,"Hivemind","A Mastermind SMS game","Team YUS"
 
 .BANK 0 SLOT 0
 
@@ -469,11 +469,11 @@ game_input:
 .section "all palettes" superfree
 	intro_palette:
 	.db $00 $10 $14 $15 $06 $18 $1A $1B $1C $1E $0F $1F $3F $00 $00 $00 ; bg
-	.db $33 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F ; spr
+	.db $00 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F ; spr
 
 	title_palette:
 	.db $10 $1C $14 $15 $06 $18 $1A $1B $1C $1E $0F $1F $3F $00 $00 $00 ; bg
-	.db $33 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F ; spr
+	.db $00 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F ; spr
 
 	ingame_palette:
 	.db $10 $11 $22 $14 $34 $17 $18 $09 $38 $0B $1C $0E $3D $1E $0F $3F ; bg
