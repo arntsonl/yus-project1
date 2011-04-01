@@ -251,9 +251,11 @@ sine_scroller:
 	ld      (VAR_sin_cnt), bc
 	
 sine_noinc:
-	cp		$68							; Only scroll the banner :3
-	jp		M, sine_noscroll			; negative, gtfo out of here..
-
+	ld		c, a						; our load swap requires 8 cycles, but it works!
+	adc		a, $98						; Only scroll the banner :3
+	jp		NC, sine_noscroll			; < $98, gtfo out of here..
+	ld		a, c						; swap back
+	
 	; Add it to a
 	ld      bc, (VAR_sin_cnt)
 	add     a, c
@@ -394,7 +396,7 @@ intro_screen_init:
 	xor		a						; 0 our sin counter
 	ld		a, (VAR_sin_cnt)
 		
-	ld		bc, $300				; load an arbitrary timer
+	ld		bc, $400				; load an arbitrary timer
 	ld		(VAR_intro_timer), bc	; load this timer into intro timer
 	
 	ret
@@ -510,16 +512,4 @@ game_input:
 .section "Wave Look-up Table" superfree
 	wave_lut:
 	.include "out.inc"
-.ends
-
-; CHECKSUM --------------------------------------------------------------------
-.BANK 1 SLOT 1
-.ORGA   $7FF0
-.section "Does WLALINK do this for us?" force
-	.DB	"TMR SEGA"	; Trademark
-    .DW $0120       ; Year
-	.DW	$0000		; Checksum not correct, WLALINK corrects this!
-	.DW	$0000		; Part Num not correct
-	.DB $00         ; Version
-    .DB $4C         ; Master System, 32k
 .ends
