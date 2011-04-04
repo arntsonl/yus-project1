@@ -87,7 +87,7 @@ vdp_load_data_loop:
 ; hl = VRAM address
 ;----------------------------------------------------------------------------
 .section "VDP Put Tile" free
-vdp_bg_puttile:
+vdp_bg_puttiles:
                 rst     $28                     ; Set VDP address to HL
                 push    ix
                 pop     ix
@@ -101,6 +101,21 @@ vdp_bg_puttile_x:
                 djnz    vdp_bg_puttile_x
                 ret
 .ends
+
+.section "VDP Put Single Tile" free
+vdp_bg_puttile:
+                rst     $28                     ; Set VDP address to HL
+                push    ix
+                pop     ix
+                ld      a, d
+                out     (VDP_DATA), a
+                push    ix
+                pop     ix
+                ld      a, e
+                out     (VDP_DATA), a
+                ret
+.ends
+
 ;----------------------------------------------------------------------------
 ;  Wait for the vrame update..
 ;

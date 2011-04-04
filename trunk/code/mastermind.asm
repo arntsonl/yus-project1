@@ -38,12 +38,22 @@
 .DEFINE VAR_solution_row				(RAM + $1B)		; 4 bytes  [0 through 5] [0 1 2 3]
 .DEFINE VAR_cursor_height				(RAM + $1F)		; 1 byte
 .DEFINE VAR_intro_timer					(RAM + $20)		; 2 bytes
-.DEFINE VAR_next_var					(RAM + $22)		; * bytes
+.DEFINE VAR_board_size					(RAM + $22)		; 1 byte	[8, 12, 14, 16] ?
+.DEFINE VAR_next_var					(RAM + $23)		; * bytes
 
 ; Game States
 .DEFINE gamestate_intro					$0
 .DEFINE gamestate_title                 $1
 .DEFINE gamestate_play                  $2
+
+; Game Colors
+.DEFINE grid_blank						$0
+.DEFINE grid_purple						$1
+.DEFINE grid_green						$2
+.DEFINE grid_blue						$3
+.DEFINE grid_aqua						$4
+.DEFINE grid_orange						$5
+.DEFINE grid_yellow						$6
 
 ; Start -----------------------------------------------------------------------
 .ORGA   $0000
@@ -171,12 +181,18 @@ intro_update:
 	dec		bc
 	ld		a, b
 	or		c						; has time expired?
-	jr		nz, intro_done 
+	jr		nz, intro_check_button 
 	
-	ld		(VAR_intro_timer), bc
+	ld		(VAR_intro_timer), bc   ; loads 0 into intro timer
 	call	title_screen_init
 	ld		a, gamestate_title
 	ld		(VAR_game_state), a
+
+intro_check_button:
+	ld		a, (JustPressedButtons)
+	and		P1_BUTTON1
+	jr		z, intro_done
+	ld		bc, $01
 
 intro_done:
 	ld		(VAR_intro_timer), bc
@@ -429,16 +445,548 @@ game_screen_init:
 	rst     $10
 	
 	ld		hl, ingame_palette
-	call 	palette_set_init		; Set initial palette
+	call 	palette_set_init			; Set initial palette
 	
-	ld		de, VRAM_TILES|$4000
+	ld		de, VRAM_TILES|$4000	; Load our optimized tiles.
 	ld		hl, gamebg_data
 	call	LoadTiles4BitRLENoDI
 	
-	ld      bc, $600
+	ld		de, $4820				; magic number :/
+	ld		hl, gamespr_data
+	call	LoadTiles4BitRLENoDI
+	
+	ld      bc, $240				; Load the top of the tile map
 	ld      hl, gametilemap_data
 	ld      de, VRAM_BG_MAP
 	call    vdp_load_data
+	
+	
+	ld		hl, VRAM_BG_MAP+$242	; offset + 4
+	rst		$28
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, $18
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		d, $16
+	ld		e, $19
+	ld		b, $0B					; loop 12 times
+	
+loop_a:
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	
+	ld		a, e
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	                                
+	djnz	loop_a                  ; loop up to Loop_a
+	
+	ld		a, $16
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	
+	ld		b, $05					; Loop a loop of tiles..
+	ld		hl, VRAM_BG_MAP+$274
+	rst		$28						; load it into VDP_ADDR
+	ld		d, $19
+	
+loop_b:								; Load right-most stuff
+	inc		d
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $00
+	out		(VDP_DATA), a
+	djnz	loop_b
+	
+	; Next line..
+	ld		hl, VRAM_BG_MAP+$282
+	rst		$28
+	ld		a, $20
+	out		(VDP_DATA), a
+	ld		a, $00
+	out		(VDP_DATA), a
+
+	ld		b, $0E
+	ld		d, $21
+	ld		e, $22
+loop_c:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, e
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	djnz	loop_c
+	
+	ld		a, $20
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$2C2
+	rst		$28
+	ld		a, $25
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		b, $0e
+	ld		d, $26		; use the same tile
+loop_d:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	djnz	loop_d
+	
+	ld		a, $25
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$302
+	rst		$28
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		b, $0e
+	ld		d, $26
+loop_e:
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $06
+	out		(VDP_DATA), a
+	djnz	loop_e
+	
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$342
+	rst		$28
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	; 2 more lines like this
+	ld		b, $0e
+	ld		d, $26
+loop_f:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	djnz	loop_f
+	
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+
+	ld		hl, VRAM_BG_MAP+$382
+	rst		$28
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	; 2 more lines like this
+	ld		b, $0e
+	ld		d, $26
+loop_g:
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $06
+	out		(VDP_DATA), a
+	djnz	loop_g
+	
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$3C2
+	rst		$28
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		b, $0e
+	ld		d, $26
+loop_h:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	djnz	loop_h
+	
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+
+	ld		hl, VRAM_BG_MAP+$402
+	rst		$28
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		b, $0e
+	ld		d, $26
+loop_i:
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $06
+	out		(VDP_DATA), a
+	djnz	loop_i
+	
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$442
+	rst		$28
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		b, $0e
+	ld		d, $26
+loop_j:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	djnz	loop_j
+	
+	ld		a, $0C
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$482
+	rst		$28
+	ld		a, $34
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		b, $0e
+	ld		d, $26
+loop_k:
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $06
+	out		(VDP_DATA), a
+	djnz	loop_k
+	
+	ld		a, $34
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$4C2
+	rst		$28
+	ld		a, $35
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		b, $0e
+	ld		d, $36
+	ld		e, $37
+loop_l:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, e
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	djnz	loop_l
+	
+	ld		a, $35
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+
+; Load the 3As
+	ld		d, $3A
+	ld		e, $3B
+	ld		hl, VRAM_BG_MAP+$504
+	rst		$28
+	ld		b, $0E
+	
+loop_m:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, e
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	djnz	loop_m
+	
+; Load the 3Bs
+	ld		d, $3E
+	ld		e, $3B
+	ld		b, $0E
+	ld		hl, VRAM_BG_MAP+$544
+	rst		$28
+	
+loop_n:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, e
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	djnz	loop_n
+	
+; Load the 3Cs
+	ld		d, $3F
+	;ld		e, $3B	; already declared above
+	ld		b, $0E
+	ld		hl, VRAM_BG_MAP+$584
+	rst		$28
+	
+loop_o:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, e
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	djnz	loop_o
+	
+; Load the 3Cs
+	ld		d, $40
+	;ld		e, $3B
+	ld		b, $0E
+	ld		hl, VRAM_BG_MAP+$5C4
+	rst		$28
+	
+loop_p:
+	ld		a, d
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, e
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	djnz	loop_p
+	
+	; Load some start sprites
+	ld		b, $04
+	ld		hl, $3f80			; Sprite 0
+	rst		$28
+loop_q:
+	ld		a, $10				; X = 80
+	out		(VDP_DATA), a
+	ld		a, $4D				; Tile $41
+	out		(VDP_DATA), a
+	ld		a, $18				; sprite 1, x = $88
+	out		(VDP_DATA), a
+	ld		a, $4E				; Tile $42
+	out		(VDP_DATA), a
+	ld		a, $10				; Sprite 2, x = $80
+	out		(VDP_DATA), a
+	ld		a, $65				; $tile 59
+	out		(VDP_DATA), a
+	ld		a, $18				; sprite 3, x = $88
+	out		(VDP_DATA), a
+	ld		a, $66				; $tile 5A
+	out		(VDP_DATA), a
+	djnz	loop_q
+	
+	ld		b, $04				;  Counter
+	ld		hl, $3f00			; Base of Ys
+	rst		$28					; Load DE -> VDP_ADDR
+	ld 		a, $4F				; start a at $4F (increments by $8)
+loop_r:
+	add		a, $8
+	out 	(VDP_DATA), a	;sets Y coord of sprite 0 to about mid center.
+	out 	(VDP_DATA), a
+	add		a, $8
+	out		(VDP_DATA), a
+	out		(VDP_DATA), a
+	djnz	loop_r
+	
+	; Load some start sprites
+	ld		d, $58				; Starting X
+	ld		b, $04
+	ld		hl, $3fA0			; Sprite 0
+	rst		$28
+loop_s:
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $41
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	add		a, $8			; add 8, put back in d as well
+	out		(VDP_DATA), a
+	ld		a, $42
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	out		(VDP_DATA), a
+	ld		a, $59
+	out		(VDP_DATA), a
+	
+	ld		a, d
+	add		a, $8			; add 8, put back in d as well
+	out		(VDP_DATA), a
+	ld		a, $5A
+	out		(VDP_DATA), a
+	
+	; Add 16 to the mix
+	ld		a, d
+	add		a, $10
+	ld		d, a
+	
+	djnz	loop_s
+	
+	ld		b, $04				;  Counter
+	ld		hl, $3f10			; Base of Ys
+	rst		$28					; Load HL|$4000 -> VDP_ADDR
+	ld 		a, $4F				; start a at $4F (increments by $8)
+loop_t:
+	ld		a, $1F
+	out 	(VDP_DATA), a		;sets Y coord of sprite 0 to about mid center.
+	out 	(VDP_DATA), a
+	ld		a, $27
+	out		(VDP_DATA), a
+	out		(VDP_DATA), a
+	djnz	loop_t
+	
+	ld		a, $d0				; Stop displaying sprites at this point..
+	out		(VDP_DATA), a
+	ld		a, $00
+	out		(VDP_DATA), a
+	
+	; Set our background on selected row ([$23, $24], $2D, [$38, $39])
+	ld		hl, VRAM_BG_MAP+$284
+	rst		$28
+	ld		a, $23
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, $24
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$2C4
+	rst		$28
+	ld		a, $2D
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, $2D
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$304
+	rst		$28
+	ld		a, $2D
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	
+	ld		a, $2D
+	out		(VDP_DATA), a
+	ld		a, $06
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$4C4
+	rst		$28
+	ld		a, $38
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, $39
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
 	
 	ld      de, $81C0                   ; Enable display
 	rst     $10
@@ -471,7 +1019,7 @@ game_input:
 .section "all palettes" superfree
 	intro_palette:
 	.db $00 $10 $14 $15 $06 $18 $1A $1B $1C $1E $0F $1F $3F $00 $00 $00 ; bg
-	.db $00 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F ; spr
+	.db $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 ; spr
 
 	title_palette:
 	.db $10 $1C $14 $15 $06 $18 $1A $1B $1C $1E $0F $1F $3F $00 $00 $00 ; bg
@@ -479,16 +1027,19 @@ game_input:
 
 	ingame_palette:
 	.db $10 $11 $22 $14 $34 $17 $18 $09 $38 $0B $1C $0E $3D $1E $0F $3F ; bg
-	.db $00 $01 $01 $00 $02 $15 $17 $15 $16 $2A $2A $27 $2A $2A $3F $3F ; spr
+	.db $00 $10 $09 $22 $38 $14 $0E $11 $0B $34 $3D $17 $0F $00 $00 $00 ; spr
 .ends
 
 ;------------------------------------------------------------------------------
 ;sprites_data:
 ;.INCLUDE "sprites.inc"
-.section "Game Background" superfree
+.section "Game Data" superfree
 	gamebg_data:
 	.INCBIN "board.pscompr"
 
+	gamespr_data:
+	.INCBIN "sprites.pscompr"
+	
 	gametilemap_data:
 	.INCLUDE "tilemap.inc"
 .ends
