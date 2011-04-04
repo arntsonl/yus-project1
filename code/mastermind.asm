@@ -467,13 +467,11 @@ game_update_all:
 ; Palette_Set_Init -------( takes hl as the palette address ) -----------------
 .section "Palette Utility" free
 palette_set_init:
-		ld a, $0
-		out ($bf), a
-		ld a, $c0
-		out ($bf), a  ;setting the VDP to $c000 lets us write the palette registers 
-		;ld hl, game_palette
+		ld	de, RAM
+		rst	$10			; set our VDP_ADDR to RAM ($c000)
+		
 		ld b, 32		;32 palette registers (most of them will be set to black anyway.)
-		ld c,$be
+		ld c, VDP_DATA  ; out (VDP_DATA), palette;  palette += 1; b--;
 		otir
         ret
 .ends
