@@ -1,7 +1,6 @@
 ;
 ; Mastermind (SMS)
-; by Cthulhu32 - March 2011
-; For the SMSPower.org Competition 2011
+; by Team YUS: Cthulhu32, Ptoing - April 2011
 ;
 
 .INCLUDE "sms.inc"
@@ -36,7 +35,7 @@
 .DEFINE VAR_cursor_anim					(RAM + $16)		; 1 byte
 .DEFINE VAR_row_colors					(RAM + $17)		; 4 bytes  [0 through 5] [0 1 2 3]
 .DEFINE VAR_solution_row				(RAM + $1B)		; 4 bytes  [0 through 5] [0 1 2 3]
-.DEFINE VAR_cursor_height				(RAM + $1F)		; 1 byte
+.DEFINE VAR_cursor_depth				(RAM + $1F)		; 1 byte
 .DEFINE VAR_intro_timer					(RAM + $20)		; 2 bytes
 .DEFINE VAR_board_size					(RAM + $22)		; 1 byte	[8, 12, 14, 16] ?
 .DEFINE VAR_next_var					(RAM + $23)		; * bytes
@@ -215,14 +214,14 @@ title_done:
 game_update:
 	;If controller 1 gave L,R, do something
 	ld		a, (JustPressedButtons)
-	and		P1_LEFT
-	jp		nz, movecursor_left
+	and		P1_UP
+	jp		nz, movecursor_up
 	
 	ld		a, (JustPressedButtons)
-	and		P1_RIGHT
-	jp		nz, movecursor_right
+	and		P1_DOWN
+	jp		nz, movecursor_down
 	
-game_leftright_done:
+game_updown_done:
 	
 	; If controller 1 gave 1, do something
 	ld		a, (JustPressedButtons)
@@ -252,9 +251,8 @@ main_done:
 
 .section "Horizontal Interrupt Handler" free
 h_interrupt:
-	; Do a sine scroller if we're on the title screen
 	ld      a, (VAR_game_state)
-	cp      gamestate_intro
+	cp      gamestate_intro				; Do a sine scroller if we're in the intro state
 	jr      nz, h_interrupt_cont		; need to do the sine scroller, or keep going
 	
 sine_scroller:
@@ -269,7 +267,7 @@ sine_scroller:
 sine_noinc:
 	ld		c, a						; our load swap requires 8 cycles, but it works!
 	adc		a, $98						; Only scroll the banner :3
-	jp		NC, sine_noscroll			; < $98, gtfo out of here..
+	jp		nc, sine_noscroll			; < $98, gtfo out of here.. (carry flag is set if a >=)
 	ld		a, c						; swap back
 	
 	; Add it to a
@@ -301,23 +299,111 @@ h_interrupt_cont:
 ; Game related functions -----------------------------------------------------
 .section "Game Functions" free
 ; User wants to move the cursor to the left
-movecursor_left:
+movecursor_up:
 		ld		a, (VAR_cursor_pos)
 		sub		1
 		cp		$ff		; we hit -1
-		jr		nz, movecursor_left_done
-		ld		a, 3	; loop back to 3
-movecursor_left_done:
-		ld		(VAR_cursor_pos), a
-		jp		game_leftright_done	; done
+		jp		z, game_updown_done ; Don't move past here..
+		ld		(VAR_cursor_pos), a	; store it and change our cursor
+		
+		; A has our y value, so we want to offset by Y * 32
+		inc		a
+		ld		b, a						; for loop (a = count)
+		ld		de, $0080					; 64 tiles per row
+		ld		hl, VRAM_BG_MAP+$244		; get our offset..
+movecursor_up_loop:
+		add		hl, de						; find offset
+		djnz	movecursor_up_loop
+		ld		de, $0040
+		
+		; Set our new tiles
+		call	set_new_tiles
+				
+		; Set our old tiles
+		add		hl, de
+		call	set_old_tiles
+		
+		jp		game_updown_done	; done
 
 ; User wants to move the cusor to the right
-movecursor_right:
+movecursor_down:
 		ld		a, (VAR_cursor_pos)
 		add		a,1
-		and		$3					; loop if necessary
-		ld		(VAR_cursor_pos), a
-		jp		game_leftright_done
+		cp		$04
+		jp		z, game_updown_done ; Don't move past here...
+		ld		(VAR_cursor_pos), a ; store it and change our cursor
+		
+		; A has our y value, so we want to offset by Y * 32
+		inc		a
+		ld		b, a						; for loop (a = count)
+		ld		de, $0080					; 64 tiles per row
+		ld		hl, VRAM_BG_MAP+$1C4		; get our offset..
+movecursor_down_loop:
+		add		hl, de						; find offset
+		djnz	movecursor_down_loop
+		ld		de, $0040
+		
+		; Set our old tiles
+		call	set_old_tiles
+		
+		; Set our new tiles
+		add		hl, de
+		call	set_new_tiles
+		
+		jp		game_updown_done    ; done
+		
+set_new_tiles:
+		rst		$28				; set VDP_ADDR = HL | $4000
+		
+		ld		a, $2D
+		out		(VDP_DATA), a
+		xor		a
+		out		(VDP_DATA), a
+		
+		ld		a, $2D
+		out		(VDP_DATA), a
+		ld		a, $02
+		out		(VDP_DATA), a
+		
+		add		hl, de
+		rst		$28
+		ld		a, $2D
+		out		(VDP_DATA), a
+		ld		a, $04
+		out		(VDP_DATA), a
+		
+		ld		a, $2D
+		out		(VDP_DATA), a
+		ld		a, $06
+		out		(VDP_DATA), a
+		
+		ret
+	
+set_old_tiles:
+		rst		$28				; set VDP_ADDR = HL | $4000
+
+		ld		a, $26
+		out		(VDP_DATA), a
+		xor		a
+		out		(VDP_DATA), a
+		
+		ld		a, $26
+		out		(VDP_DATA), a
+		ld		a, $02
+		out		(VDP_DATA), a
+		
+		add		hl, de
+		rst		$28
+		ld		a, $26
+		out		(VDP_DATA), a
+		ld		a, $04
+		out		(VDP_DATA), a
+		ld		a, $26
+		out		(VDP_DATA), a
+		ld		a, $06
+		out		(VDP_DATA), a
+		
+		ret
 		
 ; User wants to change the color of this peg
 change_peg_color:
@@ -460,6 +546,8 @@ game_screen_init:
 	ld      de, VRAM_BG_MAP
 	call    vdp_load_data
 	
+	xor		a
+	ld		(VAR_cursor_depth), a		; 0 out our depth (how far to the right are we?)
 	
 	ld		hl, VRAM_BG_MAP+$242	; offset + 4
 	rst		$28
