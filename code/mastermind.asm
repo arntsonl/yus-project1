@@ -139,12 +139,6 @@ start:
 	ld		(VAR_game_state), a		; Set game state to title screen
 	ld		(CurrentlyPressedButtons), a
 	ld		(JustPressedButtons), a
-	ld		(VAR_cursor_pos), a
-	ld		(VAR_cursor_anim), a
-	ld		(VAR_row_colors), a
-	ld		(VAR_row_colors+1), a
-	ld		(VAR_row_colors+2), a
-	ld		(VAR_row_colors+3), a
 	
 	call	intro_screen_init
 	
@@ -221,19 +215,25 @@ game_update:
 	and		P1_DOWN
 	jp		nz, movecursor_down
 	
-game_updown_done:
+	ld		a, (JustPressedButtons)
+	and		P1_LEFT
+	jp		nz, changecolor_left
+	
+	ld		a, (JustPressedButtons)
+	and		P1_RIGHT
+	jp		nz, changecolor_right
 	
 	; If controller 1 gave 1, do something
-	ld		a, (JustPressedButtons)
-	and		P1_BUTTON1
-	jp		nz, change_peg_color
+	; ld		a, (JustPressedButtons)
+	; and		P1_BUTTON1
+	; jp		nz, change_peg_color
 	
 	; If controller 1 gave 2, do something
 	ld		a, (JustPressedButtons)
 	and		P1_BUTTON2
 	jp		nz, game_nextline
 	
-game_12_done:
+game_update_done:
 	
 	; Update what else is needed
 	call game_update_all
@@ -303,7 +303,7 @@ movecursor_up:
 		ld		a, (VAR_cursor_pos)
 		sub		1
 		cp		$ff		; we hit -1
-		jp		z, game_updown_done ; Don't move past here..
+		jp		z, game_update_done ; Don't move past here..
 		ld		(VAR_cursor_pos), a	; store it and change our cursor
 		
 		; A has our y value, so we want to offset by Y * 32
@@ -323,14 +323,14 @@ movecursor_up_loop:
 		add		hl, de
 		call	set_old_tiles
 		
-		jp		game_updown_done	; done
+		jp		game_update_done	; done
 
 ; User wants to move the cusor to the right
 movecursor_down:
 		ld		a, (VAR_cursor_pos)
 		add		a,1
 		cp		$04
-		jp		z, game_updown_done ; Don't move past here...
+		jp		z, game_update_done ; Don't move past here...
 		ld		(VAR_cursor_pos), a ; store it and change our cursor
 		
 		; A has our y value, so we want to offset by Y * 32
@@ -350,7 +350,7 @@ movecursor_down_loop:
 		add		hl, de
 		call	set_new_tiles
 		
-		jp		game_updown_done    ; done
+		jp		game_update_done    ; done
 		
 set_new_tiles:
 		rst		$28				; set VDP_ADDR = HL | $4000
@@ -417,13 +417,28 @@ change_peg_color:
 		cp		$6						; make it 0 if its 6 (0..5 colors)
 		jr		nz, change_peg_done
 		xor		a
-change_peg_done
+change_peg_done:
 		ld		(hl), a					; save it back into VAR_row_colors[VAR_cursor_pos]
-		jp		game_12_done
+		jp		game_update_done
+		
+; Change the peg's color
+changecolor_left:
+		ld		hl, VAR_row_colors
+		ld		a, (VAR_cursor_pos)
+		ld		b, 0
+		ld		c, a
+		add		hl, bc
+		ld		a, (hl)
+		cp      grid_yellow
+		
+		jp		game_update_done
+
+changecolor_right:
+		jp		game_update_done
 		
 ; User wants to try their solution
 game_nextline:
-		jp		game_12_done
+		jp		game_update_done
 		
 ; Update all the game-related stuff  ------------------------------------------
 game_update_all:
@@ -457,7 +472,7 @@ game_update_all:
 	
 	game_update_nextline:
 
-	game_update_done:
+	game_update_finish:
 		
 		; Update sprite animations, bgs, anything else
 		
@@ -527,6 +542,16 @@ title_screen_init:
 game_screen_init:
 	ld      de, $8100                   ; Disable display
 	rst     $10
+	
+	; Init our variables
+	xor		a
+	ld		(VAR_cursor_pos), a
+	ld		(VAR_cursor_anim), a
+	ld		a, grid_purple
+	ld		(VAR_row_colors), a
+	ld		(VAR_row_colors+1), a
+	ld		(VAR_row_colors+2), a
+	ld		(VAR_row_colors+3), a
 	
 	ld		hl, ingame_palette
 	call 	palette_set_init			; Set initial palette
