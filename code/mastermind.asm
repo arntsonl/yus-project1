@@ -503,14 +503,18 @@ game_check_guess:
 		
 		; Compare the current guess with our actual solution
 		ld      e, 0                   ; e will be our marker offset
+		ld      hl, VAR_row_colors
 		
 		; First check for black markers
         ld      b, 4                   ; 4 markers to check
 check_black_markers:
-		ld      hl, VAR_row_colors
+		
 		ld      a, (hl)
-		ld      hl, VAR_solution_row
+		ld      bc, $04
+		add     hl, de                 ; just offset our ram by 4 (cheap but works)
 		ld      b, (hl)
+		ld      bc, $03
+		sub     hl, de                 ; move our HL pointer back 3 (this also increments our pointer
 		cp      b                      ; Are they equal
 		jr      nz, incorrect_block    ; Nope, keep going
 		; Yes, one was in the correct spot!
