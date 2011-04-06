@@ -230,13 +230,12 @@ game_update:
 	
 	; If controller 1 gave 2, do something
 	ld		a, (JustPressedButtons)
-	and		P1_BUTTON2
-	jp		nz, game_nextline
+	and		P1_BUTTON1
+	jp		nz, game_check_guess
 	
 game_update_done:
 	
 	; Update what else is needed
-	call game_update_all
 		
 main_done:
 
@@ -315,13 +314,12 @@ movecursor_up_loop:
 		add		hl, de						; find offset
 		djnz	movecursor_up_loop
 		ld		de, $0040
-		
-		; Set our new tiles
-		call	set_new_tiles
-				
-		; Set our old tiles
-		add		hl, de
-		call	set_old_tiles
+		ld      c, $2D                      ; Y offset
+		call	set_bg_4square_tiles        ; Set our new tiles
+
+		ld      c, $26                      ; Y offset
+		add		hl, de 
+		call	set_bg_4square_tiles        ; Set our old tiles
 		
 		jp		game_update_done	; done
 
@@ -342,84 +340,43 @@ movecursor_down_loop:
 		add		hl, de						; find offset
 		djnz	movecursor_down_loop
 		ld		de, $0040
+		ld      c, $26
+		call	set_bg_4square_tiles           ; Set our old tiles
 		
-		; Set our old tiles
-		call	set_old_tiles
-		
-		; Set our new tiles
+		ld      c, $2D
 		add		hl, de
-		call	set_new_tiles
+		call	set_bg_4square_tiles           ; Set our new tiles
 		
 		jp		game_update_done    ; done
 		
-set_new_tiles:
+; 4 square means each corner is the same tile, but flipped, so  Normal  Horizontal  (next line) Vertical  Horizontal-Vertical
+set_bg_4square_tiles:
 		rst		$28				; set VDP_ADDR = HL | $4000
 		
-		ld		a, $2D
+		ld		a, c
 		out		(VDP_DATA), a
 		xor		a
 		out		(VDP_DATA), a
 		
-		ld		a, $2D
+		ld		a, c
 		out		(VDP_DATA), a
 		ld		a, $02
 		out		(VDP_DATA), a
 		
 		add		hl, de
 		rst		$28
-		ld		a, $2D
+		
+		ld		a, c
 		out		(VDP_DATA), a
 		ld		a, $04
 		out		(VDP_DATA), a
 		
-		ld		a, $2D
+		ld		a, c
 		out		(VDP_DATA), a
 		ld		a, $06
 		out		(VDP_DATA), a
 		
 		ret
-	
-set_old_tiles:
-		rst		$28				; set VDP_ADDR = HL | $4000
-
-		ld		a, $26
-		out		(VDP_DATA), a
-		xor		a
-		out		(VDP_DATA), a
-		
-		ld		a, $26
-		out		(VDP_DATA), a
-		ld		a, $02
-		out		(VDP_DATA), a
-		
-		add		hl, de
-		rst		$28
-		ld		a, $26
-		out		(VDP_DATA), a
-		ld		a, $04
-		out		(VDP_DATA), a
-		ld		a, $26
-		out		(VDP_DATA), a
-		ld		a, $06
-		out		(VDP_DATA), a
-		
-		ret
-		
-; User wants to change the color of this peg
-change_peg_color:
-		ld		hl, VAR_row_colors
-		ld		b, 0
-		ld		a, (VAR_cursor_pos)
-		ld		c, a 
-		add		hl, bc				
-		ld		a, (hl)					; a = VAR_row_colors[VAR_cursor_pos]
-		add		a, 1					; a += 1
-		cp		$6						; make it 0 if its 6 (0..5 colors)
-		jr		nz, change_peg_done
-		xor		a
-change_peg_done:
-		ld		(hl), a					; save it back into VAR_row_colors[VAR_cursor_pos]
-		jp		game_update_done
 		
 ; Change the peg's color
 changecolor_left:
@@ -429,54 +386,145 @@ changecolor_left:
 		ld		c, a
 		add		hl, bc
 		ld		a, (hl)
-		cp      grid_yellow
-		
-		jp		game_update_done
+		cp      grid_purple
+		jr      nz, changecolor_decrement ; decrement a
+		ld      a, grid_yellow
+		ld      (hl), a
+		jp		changecolor_update
 
 changecolor_right:
+		ld		hl, VAR_row_colors
+		ld		a, (VAR_cursor_pos)
+		ld		b, 0
+		ld		c, a
+		add		hl, bc
+		ld		a, (hl)
+		cp      grid_yellow
+		jr      nz, changecolor_increment ; increment a
+		ld      a, grid_purple
+		ld      (hl), a
+		jp      changecolor_update
+		
+changecolor_increment:
+		inc     a
+		ld      (hl), a             ; store a+1 into color array
+		jp      changecolor_update
+		
+changecolor_decrement:
+		dec     a
+		ld      (hl), a             ; store a-1 into color array
+		;jp      changecolor_update  ; no need to jump 1 line
+		
+changecolor_update:
+        dec     a                   ; sprite tile is base 0, we're base 1
+		ld      d, a                ; sprite color of tile
+		sla     d                   ;   (*2 to get to the right spot)
+		ld      a, (VAR_cursor_pos) ; find sprite index
+		sla     a
+		sla     a                   ; a *= 4
+		sla     a
+		ld      c, a                ; sprite offset (index*8) xnxnxnxn <-- format		
+		sla     a                   ; a *= 16
+		
+		; ** NOTE ** Wrap this in a loop homie
+		; Change our sprite up top
+		ld      b, $58              ; tmp = $58
+		add     a, b                ; A = tmp + A
+		ld      e, a                ; e = X offset
+		ld      hl, $3fa0
+		ld      b, $0               ; bc = $0+reg-a
+		add     hl, bc              ; offset our sprite counter
+
+		rst     $28                 ; Load our sprite into VDP_ADDR
+		
+		ld      a, e
+		out     (VDP_DATA), a
+		ld      a, d            ; load d (tile color) into a
+		add     a, $41          ; add our sprite tile offset
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		add     a, $8
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $42
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $59
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		add     a, $8
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $5A
+		out     (VDP_DATA), a
+		
+		; Change our tile
+		ld      e, $10              ; Load the Starting X
+		ld      hl, $3f80
+		ld      b, $0
+		add     hl, bc          ; offset our sprite counter
+		rst     $28             ; Load our sprite into VDP_ADDR
+		
+		ld      a, e
+		out     (VDP_DATA), a
+		ld      a, d            ; load d (tile color) into a
+		add     a, $4D          ; add our sprite tile offset
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		add     a, $8
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $4E
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $65
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		add     a, $8
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $66
+		out     (VDP_DATA), a
+		
 		jp		game_update_done
 		
 ; User wants to try their solution
-game_nextline:
+game_check_guess:
+		
+		; Compare the current guess with our actual solution
+		ld      e, 0                   ; e will be our marker offset
+		
+		; First check for black markers
+        ld      b, 4                   ; 4 markers to check
+check_black_markers:
+		ld      hl, VAR_row_colors
+		ld      a, (hl)
+		ld      hl, VAR_solution_row
+		ld      b, (hl)
+		cp      b                      ; Are they equal
+		jr      nz, incorrect_block    ; Nope, keep going
+		; Yes, one was in the correct spot!
+		
+		inc     e                      ; Finally, increment our marker
+		
+incorrect_block:
+		djnz    check_black_markers
+		
+		
+check_wrong:
+
 		jp		game_update_done
 		
-; Update all the game-related stuff  ------------------------------------------
-game_update_all:
-		ld		a, (JustPressedButtons)
-		and		P1_LEFT|P1_RIGHT
-		jr		nz, game_update_sprite
-		
-		ld		a, (JustPressedButtons)
-		and		P1_BUTTON1
-		jp		nz, game_update_color
-		
-		ld		a, (JustPressedButtons)
-		and		P1_BUTTON2
-		jp		nz, game_update_nextline
-		
-	game_update_sprite:
-		; Look at our current position
-		ld		a, (VAR_cursor_pos)
-		
-		; And what height we are at
-		
-		jp game_update_done
-		
-	game_update_color:
-		; Look at what position we are in
-		
-		; And look at what height we are at
-		
-		; Then change the tile color at this point
-		jp game_update_done
-	
-	game_update_nextline:
-
-	game_update_finish:
-		
-		; Update sprite animations, bgs, anything else
-		
-		ret
 .ends		
 
 ; Palette_Set_Init -------( takes hl as the palette address ) -----------------
@@ -552,6 +600,16 @@ game_screen_init:
 	ld		(VAR_row_colors+1), a
 	ld		(VAR_row_colors+2), a
 	ld		(VAR_row_colors+3), a
+	
+	; Debug solution = green, green, blue, aqua
+	ld      a, grid_green
+    ld      (VAR_solution_row), a
+	ld      a, grid_green
+	ld      (VAR_solution_row+1), a
+	ld      a, grid_blue
+	ld      (VAR_solution_row+2), a
+	ld      a, grid_aqua
+	ld      (VAR_solution_row+3), a
 	
 	ld		hl, ingame_palette
 	call 	palette_set_init			; Set initial palette
