@@ -38,7 +38,9 @@
 .DEFINE VAR_cursor_depth				(RAM + $1F)		; 1 byte
 .DEFINE VAR_intro_timer					(RAM + $20)		; 2 bytes
 .DEFINE VAR_board_size					(RAM + $22)		; 1 byte	[8, 12, 14, 16] ?
-.DEFINE VAR_next_var					(RAM + $23)		; * bytes
+.DEFINE VAR_tmp_ctr                     (RAM + $23)     ; 1 byte, used for helping with counting
+.DEFINE VAR_tmp_4array                  (RAM + $24)     ; 4 bytes, temporary 4-byte array
+.DEFINE VAR_next_var					(RAM + $28)		; * bytes
 
 ; Game States
 .DEFINE gamestate_intro					$0
@@ -497,38 +499,145 @@ changecolor_update:
 		out     (VDP_DATA), a
 		
 		jp		game_update_done
-		
+.ends
+
+.section "Game Checking Algorithm" free		
+
 ; User wants to try their solution
 game_check_guess:
 		
 		; Compare the current guess with our actual solution
-		ld      e, 0                   ; e will be our marker offset
-		ld      hl, VAR_row_colors
+		xor     a
+		ld      (VAR_tmp_4array), a    ; 0 out our temp array
+		ld      (VAR_tmp_4array+1), a
+		ld      (VAR_tmp_4array+2), a
+        ld      (VAR_tmp_4array+3), a		
+		ld      e, a                   ; e is our count marker
 		
 		; First check for black markers
-        ld      b, 4                   ; 4 markers to check
+	    ld      a, 4                   ; 4 markers to check
 check_black_markers:
-		
+		ld      (VAR_tmp_ctr), a       ; load a into temp counter
+		ld      hl, VAR_row_colors-$1
+		ld      b,a
+black_inc_a:
+        inc     hl
+        djnz    black_inc_a
 		ld      a, (hl)
-		ld      bc, $04
+		ld      c, e                   ; backup e
+		ld      de, $04
 		add     hl, de                 ; just offset our ram by 4 (cheap but works)
-		ld      b, (hl)
-		ld      bc, $03
-		sub     hl, de                 ; move our HL pointer back 3 (this also increments our pointer
-		cp      b                      ; Are they equal
-		jr      nz, incorrect_block    ; Nope, keep going
+		ld      e, (hl)                ; look at the colors in our solution
+		cp      e                      ; Are they equal
+		ld      e, c                   ; restore e
+		jr      nz, incorrect_black_block    ; Nope, keep going
 		; Yes, one was in the correct spot!
+		
+		; Show the user a black dot
+		ld      a, e                   ; backup e
+		ld      b, e                   ; counter = e
+		inc     b
+		ld      hl, VRAM_BG_MAP+$4C6
+		ld      de, $0040
+black_offset:
+        add     hl, de                ; increment the address of hl by 32
+		djnz    black_offset       ; if counter == 0, done
+		ld      e, a                   ; restore backup
+		rst     $28                    ; set VDP_ADDR = VRAM_BG_MAP+$266+(32*e)
+		
+		ld      a, $3d                 ; write our black peg
+		out     (VDP_DATA), a
+		ld      a, $00
+		out     (VDP_DATA), a
+		
+		inc     a                      ; set a to 1
+		ld      hl, VAR_tmp_4array     ; load our temp array
+		add     hl, de                 ; offset to array[index]
+        ld      (hl), a                ; set array[index] = 1
 		
 		inc     e                      ; Finally, increment our marker
 		
-incorrect_block:
-		djnz    check_black_markers
+incorrect_black_block:
+        ld      a, (VAR_tmp_ctr)
+		dec     a                       ; Memory is set back at top
+		jp      nz, check_black_markers
 		
+; Done looking for matching, now we want pegs that are in the same domain
 		
-check_wrong:
+		; e is our offset counter
+		ld      a, 4
+check_white_markers:                   ; Look for white markers
+        ld      (VAR_tmp_ctr), a       ; load a into temp counter
+        
+		ld      b, $0
+		ld      c, a
+		dec     c
+		ld      hl, VAR_tmp_4array
+		add     hl, bc                 ; lets look at this array, if its 1, we're done
+		ld      a, (hl)
+		and     $1                     ; was this a black peg?
+		jr      nz, no_white_block     ; if it is, check the next block
+		
+		ld      hl, VAR_row_colors     ; what color is this peg?
+		add     hl, bc                 ; row_colors[index]
+		ld      c, (hl)                ; c is our color (how clever :3)
+		ld      b, $4                  ; check every other peg
+check_white_loop:
+        ld      a, (VAR_tmp_ctr)       ; load a into temp counter
+		cp      b                      ; are we on the same peg?
+		jr      z, next_white_loop     ; skip this peg
+		
+		ld      hl, VAR_tmp_4array     ; does this peg have a 1 (already found)
+		ld      a, e                   ; backup e
+		ld      d, $0                  ; set de to counter-1
+		ld      e, b                   ; e = counter
+		dec     e                      ; e = counter-1
+		add     hl, de                 ; hl + (counter-1)
+		ld      e, a                   ; restore e
+		ld      a, (hl)                ; load our toggler into a
+		and     $01                    ; does it == 1?
+		jr      nz, next_white_loop    ; ignore it!
+		
+		ld      hl, VAR_solution_row   ; load our solution offset
+		ld      a, e                   ; store e
+		ld      d, $0
+		ld      e, b
+		dec     e                      ; Offset to our solution index
+		add     hl, de
+		ld      e, a                   ; restore e
+		ld      a, (hl)                ; Get the solution color
+		cp      c                      ; Do these equal?
+		jr      nz, next_white_loop    ; Do not equal, go on..
 
-		jp		game_update_done
+        ; We found equals in different columns, add a white peg!
+		ld      a, e                   ; use a as our counter
+		inc     a
+		ld      c, e                   ; backup e
+		ld      hl, VRAM_BG_MAP+$4C6
+		ld      de, $0040
+white_offset:
+        add     hl, de                 ; increment the address of hl by 32
+		dec     a
+		jr      nz, white_offset
+		ld      e, c                   ; restore e
+		rst     $28                    ; set VDP_ADDR = VRAM_BG_MAP+$266+(32*e)
 		
+		ld      a, $3c                 ; write our black peg
+		out     (VDP_DATA), a
+		ld      a, $00
+		out     (VDP_DATA), a
+
+		inc     e                      ; move our marker up one
+		
+next_white_loop:
+        djnz    check_white_loop
+		
+no_white_block:
+        ld      a, (VAR_tmp_ctr)
+		dec     a                       ; Memory is set back at top
+		jp      nz, check_white_markers
+		
+		jp		game_update_done
 .ends		
 
 ; Palette_Set_Init -------( takes hl as the palette address ) -----------------
