@@ -40,12 +40,14 @@
 .DEFINE VAR_board_size					(RAM + $22)		; 1 byte	[8, 12, 14, 16] ?
 .DEFINE VAR_tmp_ctr                     (RAM + $23)     ; 1 byte, used for helping with counting
 .DEFINE VAR_tmp_4array                  (RAM + $24)     ; 4 bytes, temporary 4-byte array
-.DEFINE VAR_next_var					(RAM + $28)		; * bytes
+.DEFINE VAR_win_counter                 (RAM + $28)     ; 1 byte
+.DEFINE VAR_next_var					(RAM + $29)		; * bytes
 
 ; Game States
 .DEFINE gamestate_intro					$0
 .DEFINE gamestate_title                 $1
 .DEFINE gamestate_play                  $2
+.DEFINE gamestate_ending                $3
 
 ; Game Colors
 .DEFINE grid_blank						$0
@@ -169,6 +171,9 @@ main_update:
 	
 	cp      gamestate_play
 	jr      z, game_update
+	
+	cp      gamestate_ending
+	jr      z, ending_update
 
 intro_update:
 	; Go to title screen if timer has expired
@@ -236,8 +241,11 @@ game_update:
 	jp		nz, game_check_guess
 	
 game_update_done:
-	
-	; Update what else is needed
+	jp      main_done
+		
+ending_update:
+
+ending_done:
 		
 main_done:
 
@@ -508,11 +516,12 @@ game_check_guess:
 		
 		; Compare the current guess with our actual solution
 		xor     a
+		ld      (VAR_win_counter), a
 		ld      (VAR_tmp_4array), a    ; 0 out our temp array
 		ld      (VAR_tmp_4array+1), a
 		ld      (VAR_tmp_4array+2), a
-        ld      (VAR_tmp_4array+3), a		
-		ld      e, a                   ; e is our count marker
+        ld      (VAR_tmp_4array+3), a
+		ld      e, a                   ; e is our count marker for displaying balls
 		
 		; First check for black markers
 	    ld      a, 4                   ; 4 markers to check
@@ -531,7 +540,11 @@ black_inc_a:
 		cp      e                      ; Are they equal
 		ld      e, c                   ; restore e
 		jr      nz, incorrect_black_block    ; Nope, keep going
+		
 		; Yes, one was in the correct spot!
+		ld      a, (VAR_win_counter)   ; increase our win counter (for checking win)
+		inc     a
+		ld      (VAR_win_counter), a
 		
 		; Show the user a black dot
 		ld      a, e                   ; backup e
@@ -629,14 +642,33 @@ white_offset:
 
 		inc     e                      ; move our marker up one
 		
-next_white_loop:
+next_white_loop:                       ; check the next peg
         djnz    check_white_loop
 		
-no_white_block:
+no_white_block:                         ; go here if we know there is no white peg
         ld      a, (VAR_tmp_ctr)
 		dec     a                       ; Memory is set back at top
 		jp      nz, check_white_markers
 		
+		; check to see if WE WON!
+		ld      a, (VAR_win_counter) 
+		cp      $4                      
+		jr      z, not_winner           ; jump to not_winner if we did not
+		
+; Switch our state and display winning message!
+		ld      a, gamestate_ending
+		ld      (VAR_game_state), a
+		
+		jp      check_loop_done         ; done
+		
+not_winner:
+; Update our cursor, depth, update sprites, do some other business...
+        ld      hl, VAR_cursor_depth
+		inc     (hl)                    ; increment our depth
+
+; Check to see if we lost as well after increments our depth
+
+check_loop_done:                        ; Go here
 		jp		game_update_done
 .ends		
 
@@ -706,8 +738,9 @@ game_screen_init:
 	
 	; Init our variables
 	xor		a
-	ld		(VAR_cursor_pos), a
-	ld		(VAR_cursor_anim), a
+	ld		(VAR_cursor_pos), a         ; Y of our cursor
+	ld		(VAR_cursor_anim), a       ; What was this for again?
+	ld      (VAR_cursor_depth), a       ; X of our cursor
 	ld		a, grid_purple
 	ld		(VAR_row_colors), a
 	ld		(VAR_row_colors+1), a
