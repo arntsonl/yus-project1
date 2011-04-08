@@ -238,17 +238,20 @@ game_update:
 	; If controller 1 gave 2, do something
 	ld		a, (JustPressedButtons)
 	and		P1_BUTTON1
-	jp		nz, game_check_guess
+	jp		nz, game_check_guessh
 	
 game_update_done:
 	jp      main_done
 		
 ending_update:
+	ld      a, (JustPressedButtons)
+	and     P1_BUTTON1
+	; Reset to our title state
+	; init game the screen
 
 ending_done:
 		
 main_done:
-
 	; Reset if its called for
 	in		a, (PORT_INPUT2)
 	cpl
@@ -283,7 +286,7 @@ sine_noinc:
 	ld      bc, (VAR_sin_cnt)
 	add     a, c
 	
-	; Set X scroll (could self-modify in RAM)		
+	; Set X scroll (could self-modify in RAM)
 	ld      hl, wave_lut
 	ld      c, a
 	ld      b, $0
