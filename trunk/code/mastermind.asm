@@ -238,7 +238,7 @@ game_update:
 	; If controller 1 gave 2, do something
 	ld		a, (JustPressedButtons)
 	and		P1_BUTTON1
-	jp		nz, game_check_guessh
+	jp		nz, game_check_guess
 	
 game_update_done:
 	jp      main_done
