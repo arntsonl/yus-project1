@@ -561,7 +561,7 @@ black_offset:
 		ld      e, a                   ; restore backup
 		rst     $28                    ; set VDP_ADDR = VRAM_BG_MAP+$266+(32*e)
 		
-		ld      a, $3d                 ; write our black peg
+		ld      a, $3c                 ; write our black peg
 		out     (VDP_DATA), a
 		ld      a, $00
 		out     (VDP_DATA), a
@@ -638,7 +638,7 @@ white_offset:
 		ld      e, c                   ; restore e
 		rst     $28                    ; set VDP_ADDR = VRAM_BG_MAP+$266+(32*e)
 		
-		ld      a, $3c                 ; write our black peg
+		ld      a, $3d                 ; write our black peg
 		out     (VDP_DATA), a
 		ld      a, $00
 		out     (VDP_DATA), a
@@ -656,7 +656,7 @@ no_white_block:                         ; go here if we know there is no white p
 		; check to see if WE WON!
 		ld      a, (VAR_win_counter) 
 		cp      $4                      
-		jr      z, not_winner           ; jump to not_winner if we did not
+		jr      nz, not_winner           ; jump to not_winner if we did not
 		
 ; Switch our state and display winning message!
 		ld      a, gamestate_ending
@@ -668,9 +668,16 @@ not_winner:
 ; Update our cursor, depth, update sprites, do some other business...
         ld      hl, VAR_cursor_depth
 		inc     (hl)                    ; increment our depth
-
+		
 ; Check to see if we lost as well after increments our depth
 
+; We have not lost yet, so lets move everything over and fill in old tiles
+		ld      hl, $3f80              ; We're going to move these sprites
+		rst     $28                    ; Load our sprite into VDP_ADDR
+		
+		ld		hl, VAR_row_colors     ; get the row colors
+
+		
 check_loop_done:                        ; Go here
 		jp		game_update_done
 .ends		
