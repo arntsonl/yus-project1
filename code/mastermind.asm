@@ -326,8 +326,17 @@ movecursor_up:
 movecursor_up_loop:
 		add		hl, de						; find offset
 		djnz	movecursor_up_loop
+		
+		; Get X-Offset
+		ld      a, (VAR_cursor_depth)
+		ld      e, a
+		sla     e
+		sla     e
+		ld      d, $0
+		add     hl, de                      ; X offset
+		
 		ld		de, $0040
-		ld      c, $2D                      ; Y offset
+		ld      c, $2D                      ; Y offset from top
 		call	set_bg_4square_tiles        ; Set our new tiles
 
 		ld      c, $26                      ; Y offset
@@ -352,6 +361,15 @@ movecursor_down:
 movecursor_down_loop:
 		add		hl, de						; find offset
 		djnz	movecursor_down_loop
+		
+		; Get X-Offset
+		ld      a, (VAR_cursor_depth)
+		ld      e, a
+		sla     e
+		sla     e
+		ld      d, $0
+		add     hl, de                      ; X offset
+		
 		ld		de, $0040
 		ld      c, $26
 		call	set_bg_4square_tiles           ; Set our old tiles
@@ -441,13 +459,13 @@ changecolor_update:
 		
 		; ** NOTE ** Wrap this in a loop homie
 		; Change our sprite up top
-		ld      b, $58              ; tmp = $58
-		add     a, b                ; A = tmp + A
-		ld      e, a                ; e = X offset
+		add     a, $58                ; A = $58 + A
+		ld      e, a
+		
 		ld      hl, $3fa0
 		ld      b, $0               ; bc = $0+reg-a
 		add     hl, bc              ; offset our sprite counter
-
+		
 		rst     $28                 ; Load our sprite into VDP_ADDR
 		
 		ld      a, e
@@ -477,11 +495,19 @@ changecolor_update:
 		out     (VDP_DATA), a
 		
 		; Change our tile
-		ld      e, $10              ; Load the Starting X
 		ld      hl, $3f80
 		ld      b, $0
 		add     hl, bc          ; offset our sprite counter
 		rst     $28             ; Load our sprite into VDP_ADDR
+		
+		; Offset x
+		ld      a, (VAR_cursor_depth)
+		sla     a
+		sla     a
+		sla     a
+		sla     a
+		add     a, $10          ; offset of 16 pixels
+		ld      e, a
 		
 		ld      a, e
 		out     (VDP_DATA), a
@@ -559,6 +585,17 @@ black_offset:
         add     hl, de                ; increment the address of hl by 32
 		djnz    black_offset       ; if counter == 0, done
 		ld      e, a                   ; restore backup
+		
+		; Get X-Offset (push-pop to save de)
+		push    de
+		ld      a, (VAR_cursor_depth)
+		ld      e, a
+		sla     e
+		sla     e
+		ld      d, $0
+		add     hl, de                      ; X offset
+		pop     de
+		
 		rst     $28                    ; set VDP_ADDR = VRAM_BG_MAP+$266+(32*e)
 		
 		ld      a, $3c                 ; write our black peg
@@ -636,6 +673,17 @@ white_offset:
 		dec     a
 		jr      nz, white_offset
 		ld      e, c                   ; restore e
+		
+		; Get X-Offset (push-pop to save de)
+		push    de
+		ld      a, (VAR_cursor_depth)
+		ld      e, a
+		sla     e
+		sla     e
+		ld      d, $0
+		add     hl, de                      ; X offset
+		pop     de
+		
 		rst     $28                    ; set VDP_ADDR = VRAM_BG_MAP+$266+(32*e)
 		
 		ld      a, $3d                 ; write our black peg
@@ -666,20 +714,209 @@ no_white_block:                         ; go here if we know there is no white p
 		
 not_winner:
 ; Update our cursor, depth, update sprites, do some other business...
+
+    ; Loop through our bg tiles, fill them up with our sprite bg stuff
+		ld      b, $4     ; 4 background tiles to fill in
+not_winner_tile_update:
+		ld      de, (VAR_cursor_depth)
+		ld      hl, VRAM_BG_MAP+$284
+		sla     e
+		sla     e
+		add     hl, de
+		rst     $28
+		
+		ld      a, $21               ; get rid of highlighting
+		out     (VDP_DATA), a
+		xor     a
+		out     (VDP_DATA), a
+		
+		ld      a, $22
+		out     (VDP_DATA), a
+		xor     a
+		out     (VDP_DATA), a
+		
+		ld      hl, VRAM_BG_MAP+$4C4
+		add     hl, de
+		rst     $28
+		
+		ld      a, $36               ; get rid of highlighting
+		out     (VDP_DATA), a
+		xor     a
+		out     (VDP_DATA), a
+		
+		ld      a, $37
+		out     (VDP_DATA), a
+		xor     a
+		out     (VDP_DATA), a
+		
+		ld      hl, VRAM_BG_MAP+$244
+	    ;sla     c
+		;sla     c
+		add     hl, de    ; base-tile + cursor-depth*2
+		
+		; Next get the height
+		ld      c, b
+		ld      de, $80 ; full hop
+not_winner_tile_help:
+        add     hl, de
+		djnz    not_winner_tile_help ; loop ^		
+		rst     $28  ; load up our HL into VDP_ADDR
+		ld      b, c
+		
+		push    hl
+		call    load_color_d    ; get our color into d
+		pop     hl
+		
+		; Write our tiles
+		ld      a, d            ; load d (tile color) into a
+		add     a, $27          ; add our sprite tile offset
+		out     (VDP_DATA), a
+        xor     a               ; no flipping
+		out     (VDP_DATA), a
+		
+		ld      a, d            ; load d (tile color) into a
+		add     a, $27          ; add our sprite tile offset
+		out     (VDP_DATA), a
+        ld      a, $02          ; flip-h
+		out     (VDP_DATA), a
+		
+		ld      c, d
+		ld      de, $40
+		add     hl, de         ; move VRAM look-up
+		rst     $28             ; re-load VRAM_addr
+		ld      d, c
+		
+		ld      a, d            ; load d (tile color) into a
+		add     a, $2E          ; add our sprite tile offset
+		out     (VDP_DATA), a
+        xor     a               ; no flipping
+		out     (VDP_DATA), a
+		
+		ld      a, d            ; load d (tile color) into a
+		add     a, $2E          ; add our sprite tile offset
+		out     (VDP_DATA), a
+        ld      a, $02          ; flip-h
+		out     (VDP_DATA), a
+		
+		djnz    not_winner_tile_update
+
         ld      hl, VAR_cursor_depth
 		inc     (hl)                    ; increment our depth
 		
-; Check to see if we lost as well after increments our depth
-
-; We have not lost yet, so lets move everything over and fill in old tiles
-		ld      hl, $3f80              ; We're going to move these sprites
-		rst     $28                    ; Load our sprite into VDP_ADDR
+		; Update the highlighted tile and cursor position
+		ld      d, $0
+		ld      e, (hl)
+		sla     e
+		sla     e
+		ld      hl, VRAM_BG_MAP+$2C4
+		add     hl, de
+		rst     $28
 		
-		ld		hl, VAR_row_colors     ; get the row colors
-
+		call    helper_draw_highlight
 		
+		ld      de, (VAR_cursor_depth)
+		ld      hl, VRAM_BG_MAP+$284
+		sla     e
+		sla     e
+		add     hl, de
+		rst     $28
+		
+		ld      a, $23               ; add highlighting
+		out     (VDP_DATA), a
+		xor     a
+		out     (VDP_DATA), a
+		
+		ld      a, $24
+		out     (VDP_DATA), a
+		xor     a
+		out     (VDP_DATA), a
+		
+				ld      hl, VRAM_BG_MAP+$4C4
+		add     hl, de
+		rst     $28
+		
+		ld      a, $38               ; add highlighting
+		out     (VDP_DATA), a
+		xor     a
+		out     (VDP_DATA), a
+		
+		ld      a, $39
+		out     (VDP_DATA), a
+		xor     a
+		out     (VDP_DATA), a
+		
+	; Loop through each of our sprites
+		ld      b, $4
+not_winner_spr_update:
+
+		ld      a, $80               ; base of sprites (bottom up)
+		ld      c, b                 ; load b into c
+		dec     c                    ; if 4, then 3
+		sla     c                    ; 3 * 2
+		sla     c                    ; 3 * 4
+		sla     c                    ; 3 * 8
+		add     a, c                 ; a = $80 + ((b-1)*8)
+		ld      l, a                 ; HL = $3f*80*
+		ld      h, $3f
+		rst     $28                  ; load whats in HL into vdp_addr
+		
+		call    load_color_d        ; get our color into d
+		sla     d                   ; d = d * 2
+		
+		; d is now our color/array adder
+		ld      a, (VAR_cursor_depth)
+		sla     a ; a = a*2
+		sla     a ; a = a*4
+		sla     a ; a = a*8
+		sla     a ; a = a*16
+		add     a, $10 ; a = a + 16
+		ld      e, a                       ; store a into e
+		
+		ld      a, e
+		out     (VDP_DATA), a
+		ld      a, d            ; load d (tile color) into a
+		add     a, $4D          ; add our sprite tile offset
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		add     a, $8
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $4E
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $65
+		out     (VDP_DATA), a
+		
+		ld      a, e
+		add     a, $8
+		out     (VDP_DATA), a
+		ld      a, d
+		add     a, $66
+		out     (VDP_DATA), a
+		
+		djnz    not_winner_spr_update
+
+;   reset our VAR_cursor_pos so its at the top again
+        xor     a
+		ld      (VAR_cursor_pos), a
+
 check_loop_done:                        ; Go here
 		jp		game_update_done
+		
+; helper function, eats up hl and e
+load_color_d:
+		ld      hl, VAR_row_colors         ; get mem for VAR_row_colors
+		ld      d, $0
+		ld      e, b
+		dec     e
+		add     hl, de                     ; move array incrementer
+		ld      d, (hl)                    ; load memory at array[index]
+		dec     d                          ; color-1 = offset
+		ret
 .ends		
 
 ; Palette_Set_Init -------( takes hl as the palette address ) -----------------
@@ -1279,27 +1516,8 @@ loop_t:
 	
 	ld		hl, VRAM_BG_MAP+$2C4
 	rst		$28
-	ld		a, $2D
-	out		(VDP_DATA), a
-	xor		a
-	out		(VDP_DATA), a
-	
-	ld		a, $2D
-	out		(VDP_DATA), a
-	ld		a, $02
-	out		(VDP_DATA), a
-	
-	ld		hl, VRAM_BG_MAP+$304
-	rst		$28
-	ld		a, $2D
-	out		(VDP_DATA), a
-	ld		a, $04
-	out		(VDP_DATA), a
-	
-	ld		a, $2D
-	out		(VDP_DATA), a
-	ld		a, $06
-	out		(VDP_DATA), a
+
+	call    helper_draw_highlight ; expects HL
 	
 	ld		hl, VRAM_BG_MAP+$4C4
 	rst		$28
@@ -1320,6 +1538,35 @@ loop_t:
 	rst		$10
 	
 	ret
+	
+	
+helper_draw_highlight:
+    ld		a, $2D
+	out		(VDP_DATA), a
+	xor		a
+	out		(VDP_DATA), a
+	
+	ld		a, $2D
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	
+	ld      de, $40
+	add     hl, de
+	rst		$28
+	
+	ld		a, $2D
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	
+	ld		a, $2D
+	out		(VDP_DATA), a
+	ld		a, $06
+	out		(VDP_DATA), a
+	
+	ret
+
 .ends
 	
 .section "Controller Input Function" free
