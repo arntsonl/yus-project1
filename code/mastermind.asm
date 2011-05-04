@@ -961,6 +961,9 @@ title_screen_init:
 	ld      de, $8100                   ; Disable display
 	rst     $10
 	
+	ld      de, $8800
+	rst     $10							; Move horizontal scroll back to 0
+	
 	ld		hl, title_palette
 	call 	palette_set_init		; Set initial palette
 	
@@ -1594,7 +1597,7 @@ game_input:
 	.db $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 ; spr
 
 	title_palette:
-	.db $10 $1C $14 $15 $06 $18 $1A $1B $1C $1E $0F $1F $3F $00 $00 $00 ; bg
+	.db $00 $14 $18 $29 $1C $3D $1E $3F $00 $00 $00 $00 $00 $00 $00 $00 ; bg
 	.db $00 $30 $01 $30 $03 $03 $34 $05 $17 $39 $0B $3F $0F $3F $1F $0F ; spr
 
 	ingame_palette:
