@@ -11,37 +11,46 @@
 
 .MEMORYMAP
 	DEFAULTSLOT     0
-	SLOTSIZE        PAGE_SIZE
-	SLOT            0               PAGE_0
-	SLOT			1				PAGE_1
+	SLOTSIZE        $4000
+	SLOT            0               $0000	; ROM page 0
+	SLOTSIZE		$4000
+	SLOT			1				$4000	; ROM page 1
+	SLOTSIZE		$4000
+	SLOT			2				$8000	; ROM page 2
+	SLOTSIZE		$2000
+	SLOT			3				$C000	; RAM
 .ENDME
 
 .ROMBANKMAP
-	BANKSTOTAL      2
-	banksize 		PAGE_SIZE
-	banks 2
+	BANKSTOTAL      4
+	banksize 		$4000
+	banks 1
+	banks 1
+	banks 1
+	banks 1
 .ENDRO
 
 .sdsctag 1.0,"Hivemind","A Mastermind SMS game","Team YUS"
 
-.BANK 0 SLOT 0
+.ramsection "RAM" slot 3
 
-.DEFINE VAR_frame_cnt                   (RAM + $10)     ; 1 byte
-.DEFINE VAR_game_state					(RAM + $11)		; 1 byte
-.DEFINE VAR_sin_cnt						(RAM + $12)     ; 1 byte
-.DEFINE CurrentlyPressedButtons			(RAM + $13)		; 1 byte
-.DEFINE JustPressedButtons				(RAM + $14)		; 1 byte
-.DEFINE VAR_cursor_pos					(RAM + $15)		; 1 byte, [0 1 2 3]
-.DEFINE VAR_cursor_anim					(RAM + $16)		; 1 byte
-.DEFINE VAR_row_colors					(RAM + $17)		; 4 bytes  [0 through 5] [0 1 2 3]
-.DEFINE VAR_solution_row				(RAM + $1B)		; 4 bytes  [0 through 5] [0 1 2 3]
-.DEFINE VAR_cursor_depth				(RAM + $1F)		; 1 byte
-.DEFINE VAR_intro_timer					(RAM + $20)		; 2 bytes
-.DEFINE VAR_board_size					(RAM + $22)		; 1 byte	[8, 12, 14, 16] ?
-.DEFINE VAR_tmp_ctr                     (RAM + $23)     ; 1 byte, used for helping with counting
-.DEFINE VAR_tmp_4array                  (RAM + $24)     ; 4 bytes, temporary 4-byte array
-.DEFINE VAR_win_counter                 (RAM + $28)     ; 1 byte
-.DEFINE VAR_next_var					(RAM + $29)		; * bytes
+VAR_frame_cnt							db
+VAR_game_state							db
+VAR_sin_cnt								db
+CurrentlyPressedButtons					db
+JustPressedButtons						db
+VAR_cursor_pos							db
+VAR_cursor_anim							db
+VAR_row_colors							dsb 4
+VAR_solution_row						dsb 4
+VAR_cursor_depth						db
+VAR_intro_timer							dw
+VAR_board_size							db
+VAR_tmp_ctr								db
+VAR_tmp_4array							dsb 4
+VAR_win_counter							db
+
+.ends
 
 ; Game States
 .DEFINE gamestate_intro					$0
@@ -59,7 +68,9 @@
 .DEFINE grid_yellow						$6
 
 ; Start -----------------------------------------------------------------------
-.ORGA   $0000
+.BANK 0 SLOT 0
+
+.ORG   $0000
 .section "Boot Section" force
 	di
 	im      1					; set the interrupt mode to 1
@@ -70,7 +81,7 @@
 ;------------------------------------------------------------------------------
 
 ; Tools ---------------------------------------------------------------------
-.ORGA   $0010
+.ORG   $0010
 .section "Interrupt Vector Write DE" force
 vdp_write_de:
 	ld      a, e
@@ -80,7 +91,7 @@ vdp_write_de:
 	ret
 .ends
 	
-.ORGA   $0018
+.ORG   $0018
 .section "Interrupt Vector Write Addr DE" force
 vdp_write_addr_de:
 	ld      a, e
@@ -91,7 +102,7 @@ vdp_write_addr_de:
 	ret
 .ends
 	
-.ORGA   $0028
+.ORG   $0028
 .section "Interrupt Vector Write Addr HL" force
 vdp_write_addr_hl:
 	ld      a, l
@@ -104,7 +115,7 @@ vdp_write_addr_hl:
 	
 ; Interrupt -------------------------------------------------------------------
 
-.ORGA   $0038
+.ORG   $0038
 .section "Interrupt" force
 interrupt:
 	di
@@ -127,7 +138,7 @@ interrupt_end:
 ;------------------------------------------------------------------------------
 
 ; NMI -------------------------------------------------------------------------
-.ORGA   $0066
+.ORG    $0066
 .section "Return NMI" force
         reti
 .ends
@@ -484,14 +495,14 @@ changecolor_update:
 		ld      a, e
 		out     (VDP_DATA), a
 		ld      a, d
-		add     a, $59
+		add     a, $4D
 		out     (VDP_DATA), a
 		
 		ld      a, e
 		add     a, $8
 		out     (VDP_DATA), a
 		ld      a, d
-		add     a, $5A
+		add     a, $4E
 		out     (VDP_DATA), a
 		
 		; Change our tile
@@ -943,10 +954,9 @@ intro_screen_init:
 	ld		hl, yuscompr_data
 	call	LoadTiles4BitRLENoDI
 	
-	ld      bc, $600
+	ld      de, VRAM_BG_MAP|$4000
 	ld      hl, yustilemap_data
-	ld      de, VRAM_BG_MAP
-	call    vdp_load_data
+	call    LoadTilemapToVRAMNoDI
 		
 	xor		a						; 0 our sin counter
 	ld		a, (VAR_sin_cnt)
@@ -971,10 +981,9 @@ title_screen_init:
 	ld		hl, title_data
 	call	LoadTiles4BitRLENoDI
 	
-	ld        bc, $600
-	ld        hl, titletilemap_data
-	ld        de, VRAM_BG_MAP
-	call      vdp_load_data
+	ld      de, VRAM_BG_MAP|$4000
+	ld      hl, titletilemap_data
+	call    LoadTilemapToVRAMNoDI
 	
 	ld      de, $81C0                   ; Enable display
 	rst     $10
@@ -1018,10 +1027,9 @@ game_screen_init:
 	ld		hl, gamespr_data
 	call	LoadTiles4BitRLENoDI
 	
-	ld      bc, $240				; Load the top of the tile map
+	ld      de, VRAM_BG_MAP|$4000	; Load the tile map (will be overwritten)
 	ld      hl, gametilemap_data
-	ld      de, VRAM_BG_MAP
-	call    vdp_load_data
+	call    LoadTilemapToVRAMNoDI
 	
 	xor		a
 	ld		(VAR_cursor_depth), a		; 0 out our depth (how far to the right are we?)
@@ -1422,19 +1430,19 @@ loop_p:
 loop_q:
 	ld		a, $10				; X = 80
 	out		(VDP_DATA), a
-	ld		a, $4D				; Tile $41
+	ld		a, $109				; Tile $109 ... need to set register #6? and then use $09 to get $109..
 	out		(VDP_DATA), a
 	ld		a, $18				; sprite 1, x = $88
 	out		(VDP_DATA), a
-	ld		a, $4E				; Tile $42
+	ld		a, $10A				; Tile $42
 	out		(VDP_DATA), a
 	ld		a, $10				; Sprite 2, x = $80
 	out		(VDP_DATA), a
-	ld		a, $65				; $tile 59
+	ld		a, $115				; $tile 59
 	out		(VDP_DATA), a
 	ld		a, $18				; sprite 3, x = $88
 	out		(VDP_DATA), a
-	ld		a, $66				; $tile 5A
+	ld		a, $116				; $tile 5A
 	out		(VDP_DATA), a
 	djnz	loop_q
 	
@@ -1542,7 +1550,6 @@ loop_t:
 	
 	ret
 	
-	
 helper_draw_highlight:
     ld		a, $2D
 	out		(VDP_DATA), a
@@ -1588,12 +1595,13 @@ game_input:
 	ld		(JustPressedButtons), a
 		
 	ret
-.ends		
+.ends
 
+.bank 2 slot 2
 ;------------------------------------------------------------------------------
-.section "all palettes" superfree
+.section "all palettes" force
 	intro_palette:
-	.db $00 $10 $14 $15 $06 $18 $1A $1B $1C $1E $0F $1F $3F $00 $00 $00 ; bg
+	.db $00 $18 $3F $1C $14 $0F $1A $06 $1E $10 $15 $1B $1F $00 $00 $00 ; bg
 	.db $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 $00 ; spr
 
 	title_palette:
@@ -1602,13 +1610,13 @@ game_input:
 
 	ingame_palette:
 	.db $10 $11 $22 $14 $34 $17 $18 $09 $38 $0B $1C $0E $3D $1E $0F $3F ; bg
-	.db $00 $10 $09 $22 $38 $14 $0E $11 $0B $34 $3D $17 $0F $00 $00 $00 ; spr
+	.db $00 $10 $20 $30 $11 $22 $14 $34 $17 $09 $38 $0B $0E $3D $0F $3F ; spr
 .ends
 
 ;------------------------------------------------------------------------------
 ;sprites_data:
 ;.INCLUDE "sprites.inc"
-.section "Game Data" superfree
+.section "Game Data" free
 	gamebg_data:
 	.INCBIN "board.pscompr"
 
@@ -1616,26 +1624,26 @@ game_input:
 	.INCBIN "sprites.pscompr"
 	
 	gametilemap_data:
-	.INCLUDE "tilemap.inc"
+	.INCBIN "board_tiles.pscompr"
 .ends
 
-.section "Title Background" superfree
+.section "Title Background" free
 	title_data:
 	.INCBIN "title.pscompr"
 	
 	titletilemap_data:
-	.INCLUDE "titlemap.inc"
+	.INCBIN "title_tiles.pscompr"
 .ends
 
-.section "Team YUS Background" superfree
+.section "Team YUS Background" free
 	yuscompr_data:
 	.INCBIN "yuslogo.pscompr"
 
 	yustilemap_data:
-	.INCLUDE "yustilemap.inc"
+	.INCBIN "yuslogo_tiles.pscompr"
 .ends
 
-.section "Wave Look-up Table" superfree
+.section "Wave Look-up Table" free
 	wave_lut:
 	.include "out.inc"
 .ends

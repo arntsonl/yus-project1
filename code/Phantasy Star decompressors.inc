@@ -246,3 +246,50 @@ __:
   jr _b              ; repeat forever ------+
                      ; (zero count byte quits)
 .ends
+
+
+.section "Decompress tilemap to VRAM NoDI" free
+; Decompresses tilemap data from hl to VRAM address de
+; This isn't from Phantasy Star; it's the tile routine modified for
+; interleaving 2 instead of 4
+LoadTilemapToVRAMNoDI:
+  push de
+    call _f
+  pop de
+  inc de
+  call _f
+  ret
+
+__:
+  ld a,(hl)          ; read count byte <----+
+  inc hl             ; increment pointer    |
+  or a               ; return if zero       |
+  ret z              ;                      |
+                     ;                      |
+  ld c,a             ; get low 7 bits in b  |
+  and $7f            ;                      |
+  ld b,a             ;                      |
+  ld a,c             ; set z flag if high   |
+  and $80            ; bit = 0              |
+                     ;                      |
+-:                   ;                      |
+.ifdef UseRst        ; SetVRAMAddressToDE<+ |
+  rst $08            ;                    | |
+.else                ;                    | |
+  call SetVRAMAddressToDE ;               | |
+.endif               ;                    | |
+  ld a,(hl)          ; Get data byte in a | |
+  out ($be),a        ; Write it to VRAM   | |
+  jr z,+             ; If z flag then  -+ | |
+                     ; skip inc hl      | | |
+  inc hl             ;                  | | |
+                     ;                  | | |
++:inc de             ; Add 2 to de <----+ | |
+  inc de             ;                    | |
+  djnz -             ; repeat block  -----+ |
+                     ; b times              |
+  jr nz,_b           ; If not z flag -------+
+  inc hl             ; inc hl here instead  |
+  jr _b              ; repeat forever ------+
+                     ; (zero count byte quits)
+.ends
