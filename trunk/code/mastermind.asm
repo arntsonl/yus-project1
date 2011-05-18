@@ -397,12 +397,12 @@ set_bg_4square_tiles:
 		
 		ld		a, c
 		out		(VDP_DATA), a
-		xor		a
+		ld		a, $01
 		out		(VDP_DATA), a
 		
 		ld		a, c
 		out		(VDP_DATA), a
-		ld		a, $02
+		ld		a, $03
 		out		(VDP_DATA), a
 		
 		add		hl, de
@@ -410,12 +410,12 @@ set_bg_4square_tiles:
 		
 		ld		a, c
 		out		(VDP_DATA), a
-		ld		a, $04
+		ld		a, $05
 		out		(VDP_DATA), a
 		
 		ld		a, c
 		out		(VDP_DATA), a
-		ld		a, $06
+		ld		a, $07
 		out		(VDP_DATA), a
 		
 		ret
@@ -482,27 +482,27 @@ changecolor_update:
 		ld      a, e
 		out     (VDP_DATA), a
 		ld      a, d            ; load d (tile color) into a
-		add     a, $41          ; add our sprite tile offset
+		;add     a, $00         ; sprite starts at $00
 		out     (VDP_DATA), a
 		
 		ld      a, e
 		add     a, $8
 		out     (VDP_DATA), a
 		ld      a, d
-		add     a, $42
+		add     a, $01
 		out     (VDP_DATA), a
 		
 		ld      a, e
 		out     (VDP_DATA), a
 		ld      a, d
-		add     a, $4D
+		add     a, $0C
 		out     (VDP_DATA), a
 		
 		ld      a, e
 		add     a, $8
 		out     (VDP_DATA), a
 		ld      a, d
-		add     a, $4E
+		add     a, $0D
 		out     (VDP_DATA), a
 		
 		; Change our tile
@@ -523,27 +523,27 @@ changecolor_update:
 		ld      a, e
 		out     (VDP_DATA), a
 		ld      a, d            ; load d (tile color) into a
-		add     a, $4D          ; add our sprite tile offset
+		add     a, $C8          ; add our sprite tile offset
 		out     (VDP_DATA), a
 		
 		ld      a, e
 		add     a, $8
 		out     (VDP_DATA), a
 		ld      a, d
-		add     a, $4E
+		add     a, $C9
 		out     (VDP_DATA), a
 		
 		ld      a, e
 		out     (VDP_DATA), a
 		ld      a, d
-		add     a, $65
+		add     a, $D4
 		out     (VDP_DATA), a
 		
 		ld      a, e
 		add     a, $8
 		out     (VDP_DATA), a
 		ld      a, d
-		add     a, $66
+		add     a, $D5
 		out     (VDP_DATA), a
 		
 		jp		game_update_done
@@ -611,7 +611,7 @@ black_offset:
 		
 		ld      a, $3c                 ; write our black peg
 		out     (VDP_DATA), a
-		ld      a, $00
+		ld      a, $01
 		out     (VDP_DATA), a
 		
 		inc     a                      ; set a to 1
@@ -699,7 +699,7 @@ white_offset:
 		
 		ld      a, $3d                 ; write our black peg
 		out     (VDP_DATA), a
-		ld      a, $00
+		ld      a, $01
 		out     (VDP_DATA), a
 
 		inc     e                      ; move our marker up one
@@ -738,12 +738,12 @@ not_winner_tile_update:
 		
 		ld      a, $21               ; get rid of highlighting
 		out     (VDP_DATA), a
-		xor     a
+		ld		a, $01
 		out     (VDP_DATA), a
 		
 		ld      a, $22
 		out     (VDP_DATA), a
-		xor     a
+		ld		a, $01
 		out     (VDP_DATA), a
 		
 		ld      hl, VRAM_BG_MAP+$4C4
@@ -752,7 +752,7 @@ not_winner_tile_update:
 		
 		ld      a, $36               ; get rid of highlighting
 		out     (VDP_DATA), a
-		xor     a
+		ld		a, $01
 		out     (VDP_DATA), a
 		
 		ld      a, $37
@@ -834,7 +834,7 @@ not_winner_tile_help:
 		
 		ld      a, $23               ; add highlighting
 		out     (VDP_DATA), a
-		xor     a
+		ld		a, $01
 		out     (VDP_DATA), a
 		
 		ld      a, $24
@@ -848,7 +848,7 @@ not_winner_tile_help:
 		
 		ld      a, $38               ; add highlighting
 		out     (VDP_DATA), a
-		xor     a
+		ld		a, $01
 		out     (VDP_DATA), a
 		
 		ld      a, $39
@@ -1019,17 +1019,31 @@ game_screen_init:
 	ld		hl, ingame_palette
 	call 	palette_set_init			; Set initial palette
 	
-	ld		de, VRAM_TILES|$4000	; Load our optimized tiles.
-	ld		hl, gamebg_data
-	call	LoadTiles4BitRLENoDI
-	
-	ld		de, $4820				; magic number :/
+	ld		de, VRAM_TILES|$4000	; Load sprites at the beginning
 	ld		hl, gamespr_data
 	call	LoadTiles4BitRLENoDI
 	
-	ld      de, VRAM_BG_MAP|$4000	; Load the tile map (will be overwritten)
-	ld      hl, gametilemap_data
-	call    LoadTilemapToVRAMNoDI
+	ld		de, $6000	; Load our optimized tiles.
+	ld		hl, gamebg_data
+	call	LoadTiles4BitRLENoDI
+	
+;	ld      de, VRAM_BG_MAP|$4000	; Load the tile map (will be overwritten)
+;	ld      hl, gametilemap_data
+;	call    LoadTilemapToVRAMNoDI
+	ld		hl, VRAM_BG_MAP|$4000
+	rst		$28
+	
+	; Clear it all out
+	ld		bc, $300
+clear_game_bg_loop:
+	xor		a					; 0x100
+	out		(VDP_DATA), a
+	ld		a, $01				; 0x100
+	out		(VDP_DATA), a
+	dec		bc
+	ld		a, c
+	or		b
+	jr		nz, clear_game_bg_loop
 	
 	xor		a
 	ld		(VAR_cursor_depth), a		; 0 out our depth (how far to the right are we?)
@@ -1038,12 +1052,12 @@ game_screen_init:
 	rst		$28
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, $18
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		d, $16
@@ -1053,19 +1067,19 @@ game_screen_init:
 loop_a:
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $04
+	ld		a, $05
 	out		(VDP_DATA), a
 	
 	ld		a, e
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	                                
 	djnz	loop_a                  ; loop up to Loop_a
 	
 	ld		a, $16
 	out		(VDP_DATA), a
-	ld		a, $04
+	ld		a, $05
 	out		(VDP_DATA), a
 	
 	ld		b, $05					; Loop a loop of tiles..
@@ -1077,7 +1091,7 @@ loop_b:								; Load right-most stuff
 	inc		d
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $00
+	ld		a, $01
 	out		(VDP_DATA), a
 	djnz	loop_b
 	
@@ -1086,7 +1100,7 @@ loop_b:								; Load right-most stuff
 	rst		$28
 	ld		a, $20
 	out		(VDP_DATA), a
-	ld		a, $00
+	ld		a, $01
 	out		(VDP_DATA), a
 
 	ld		b, $0E
@@ -1095,26 +1109,26 @@ loop_b:								; Load right-most stuff
 loop_c:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, e
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	djnz	loop_c
 	
 	ld		a, $20
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 	
 	ld		hl, VRAM_BG_MAP+$2C2
 	rst		$28
 	ld		a, $25
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		b, $0e
@@ -1122,25 +1136,25 @@ loop_c:
 loop_d:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 	djnz	loop_d
 	
 	ld		a, $25
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 	
 	ld		hl, VRAM_BG_MAP+$302
 	rst		$28
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		b, $0e
@@ -1148,25 +1162,25 @@ loop_d:
 loop_e:
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $04
+	ld		a, $05
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $06
+	ld		a, $07
 	out		(VDP_DATA), a
 	djnz	loop_e
 	
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		hl, VRAM_BG_MAP+$342
 	rst		$28
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	; 2 more lines like this
@@ -1175,25 +1189,25 @@ loop_e:
 loop_f:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 	djnz	loop_f
 	
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 
 	ld		hl, VRAM_BG_MAP+$382
 	rst		$28
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	; 2 more lines like this
@@ -1202,25 +1216,25 @@ loop_f:
 loop_g:
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $04
+	ld		a, $05
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $06
+	ld		a, $07
 	out		(VDP_DATA), a
 	djnz	loop_g
 	
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		hl, VRAM_BG_MAP+$3C2
 	rst		$28
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		b, $0e
@@ -1228,25 +1242,25 @@ loop_g:
 loop_h:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 	djnz	loop_h
 	
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 
 	ld		hl, VRAM_BG_MAP+$402
 	rst		$28
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		b, $0e
@@ -1254,25 +1268,25 @@ loop_h:
 loop_i:
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $04
+	ld		a, $05
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $06
+	ld		a, $07
 	out		(VDP_DATA), a
 	djnz	loop_i
 	
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		hl, VRAM_BG_MAP+$442
 	rst		$28
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		b, $0e
@@ -1280,25 +1294,25 @@ loop_i:
 loop_j:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 	djnz	loop_j
 	
 	ld		a, $0C
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		hl, VRAM_BG_MAP+$482
 	rst		$28
 	ld		a, $34
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		b, $0e
@@ -1306,25 +1320,25 @@ loop_j:
 loop_k:
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $04
+	ld		a, $05
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $06
+	ld		a, $07
 	out		(VDP_DATA), a
 	djnz	loop_k
 	
 	ld		a, $34
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 	
 	ld		hl, VRAM_BG_MAP+$4C2
 	rst		$28
 	ld		a, $35
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		b, $0e
@@ -1333,18 +1347,18 @@ loop_k:
 loop_l:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, e
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	djnz	loop_l
 	
 	ld		a, $35
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 
 ; Load the 3As
@@ -1357,12 +1371,12 @@ loop_l:
 loop_m:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, e
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	djnz	loop_m
 	
@@ -1376,12 +1390,12 @@ loop_m:
 loop_n:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, e
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	djnz	loop_n
 	
@@ -1395,12 +1409,12 @@ loop_n:
 loop_o:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, e
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	djnz	loop_o
 	
@@ -1414,35 +1428,37 @@ loop_o:
 loop_p:
 	ld		a, d
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, e
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	djnz	loop_p
 	
 	; Load some start sprites
-	ld		b, $04
 	ld		hl, $3f80			; Sprite 0
 	rst		$28
+	
+	ld		b, $04
 loop_q:
 	ld		a, $10				; X = 80
 	out		(VDP_DATA), a
-	ld		a, $109				; Tile $109 ... need to set register #6? and then use $09 to get $109..
+	
+	ld		a, $C8				; Tile $00
 	out		(VDP_DATA), a
 	ld		a, $18				; sprite 1, x = $88
 	out		(VDP_DATA), a
-	ld		a, $10A				; Tile $42
+	ld		a, $C9				; Tile $01
 	out		(VDP_DATA), a
 	ld		a, $10				; Sprite 2, x = $80
 	out		(VDP_DATA), a
-	ld		a, $115				; $tile 59
+	ld		a, $D4				; Tile $0C
 	out		(VDP_DATA), a
 	ld		a, $18				; sprite 3, x = $88
 	out		(VDP_DATA), a
-	ld		a, $116				; $tile 5A
+	ld		a, $D5				; Tile $0D
 	out		(VDP_DATA), a
 	djnz	loop_q
 	
@@ -1467,24 +1483,24 @@ loop_r:
 loop_s:
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $41
+	ld		a, $00
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	add		a, $8			; add 8, put back in d as well
 	out		(VDP_DATA), a
-	ld		a, $42
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	out		(VDP_DATA), a
-	ld		a, $59
+	ld		a, $0C
 	out		(VDP_DATA), a
 	
 	ld		a, d
 	add		a, $8			; add 8, put back in d as well
 	out		(VDP_DATA), a
-	ld		a, $5A
+	ld		a, $0D
 	out		(VDP_DATA), a
 	
 	; Add 16 to the mix
@@ -1517,12 +1533,12 @@ loop_t:
 	rst		$28
 	ld		a, $23
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, $24
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		hl, VRAM_BG_MAP+$2C4
@@ -1534,12 +1550,12 @@ loop_t:
 	rst		$28
 	ld		a, $38
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, $39
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld      de, $81C0                   ; Enable display
@@ -1553,12 +1569,12 @@ loop_t:
 helper_draw_highlight:
     ld		a, $2D
 	out		(VDP_DATA), a
-	xor		a
+	ld		a, $01
 	out		(VDP_DATA), a
 	
 	ld		a, $2D
 	out		(VDP_DATA), a
-	ld		a, $02
+	ld		a, $03
 	out		(VDP_DATA), a
 	
 	ld      de, $40
@@ -1567,12 +1583,12 @@ helper_draw_highlight:
 	
 	ld		a, $2D
 	out		(VDP_DATA), a
-	ld		a, $04
+	ld		a, $05
 	out		(VDP_DATA), a
 	
 	ld		a, $2D
 	out		(VDP_DATA), a
-	ld		a, $06
+	ld		a, $07
 	out		(VDP_DATA), a
 	
 	ret
