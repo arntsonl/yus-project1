@@ -31,7 +31,11 @@
 ;----------------------------------------------------------------------------
 .DEFINE         VREG_CONFIG0            $80
 .DEFINE         VREG_CONFIG1            $81
-; ..
+.DEFINE			VREG_NAME_TBL           $82
+.DEFINE			VREG_CLR_TBL    		$83
+.DEFINE			VREG_PTRN_GEN			$84
+.DEFINE			VREG_SPR_ATTR			$85           ; Sprite attribute table base
+.DEFINE			VREG_SPR_PTRN	    	$86			  ; Sprite pattern
 .DEFINE         VREG_BORDER_COL         $87
 .DEFINE         VREG_HSCROLL            $88
 .DEFINE         VREG_VSCROLL            $89
