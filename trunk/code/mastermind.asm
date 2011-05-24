@@ -1048,6 +1048,383 @@ clear_game_bg_loop:
 	xor		a
 	ld		(VAR_cursor_depth), a		; 0 out our depth (how far to the right are we?)
 	
+	ld		hl, VRAM_BG_MAP+$3A		; first setup
+	rst		$28
+	ld		a, $01
+	out		(VDP_DATA), a
+	out		(VDP_DATA), a
+	
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$78
+	rst		$28
+	ld		a, $02
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $02
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$84
+	rst		$28
+	ld		a, $05
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $06
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	
+	ld		b, $17
+loop_aa:
+	ld		a, $07
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_aa
+	
+	ld		a, $08
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0A
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0A
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$C4
+	rst		$28
+	ld		a, $0B
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	
+	ld		b, $8
+loop_bb:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_bb
+	
+	ld		b, $4
+loop_cc:
+	ld		a, $0D
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0D
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	djnz	loop_cc
+	
+	ld		b, $8
+loop_dd:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_dd
+	
+	ld		a, $0E
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$104
+	rst		$28
+	
+	ld		b, $1A
+loop_ee:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_ee
+	
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0A
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0A
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$144
+	rst		$28
+	
+	ld		b, $1A
+loop_ff:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_ff
+	
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$182
+	rst		$28
+	ld		a, $05
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	
+	ld		b, $09
+loop_gg:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_gg
+	
+	ld		b, $04
+loop_hh:
+	ld		a, $0F
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0F
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	djnz	loop_hh
+	
+	ld		b, $09
+loop_ii:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_ii
+	
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0A
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0A
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$1C2
+	rst		$28
+	ld		a, $0B
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		b, $07
+loop_jj:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_jj
+	
+	ld		a, $10
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $11
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $12
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $12
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $10
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $10
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $10
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $10
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $13
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $14
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $15
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $11
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		b, $07
+loop_ll:
+	ld		a, $0c
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_ll
+	
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $04
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		hl, VRAM_BG_MAP+$202
+	rst		$28
+	ld		b, $08
+loop_mm:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_mm
+	
+	ld		a, $0F
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	
+	ld		b, $0A
+loop_nn:
+	ld		a, $16
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_nn
+	
+	ld		a, $0F
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
+	ld		b, $06
+loop_oo:
+	ld		a, $0C
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	djnz	loop_oo
+	
+	ld		a, $17
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0A
+	out		(VDP_DATA), a
+	ld		a, $01
+	out		(VDP_DATA), a
+	ld		a, $0A
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	ld		a, $09
+	out		(VDP_DATA), a
+	ld		a, $03
+	out		(VDP_DATA), a
+	
 	ld		hl, VRAM_BG_MAP+$242	; offset + 4
 	rst		$28
 	ld		a, $0C
@@ -1638,9 +2015,6 @@ game_input:
 
 	gamespr_data:
 	.INCBIN "sprites.pscompr"
-	
-	gametilemap_data:
-	.INCBIN "board_tiles.pscompr"
 .ends
 
 .section "Title Background" free
