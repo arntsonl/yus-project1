@@ -22,11 +22,11 @@ vdp_init:
 ; no parameters
 ;----------------------------------------------------------------------------
 vdp_clear:                                      ;
-                ld      de, $0000               ; Clear VRAM
-                rst     $18                     ; Set VDP address to DE
+                xor		a		                ; Clear VRAM
+				out     (VDP_ADDR), a
+				out     (VDP_ADDR), a
                 ld      bc, VRAM_SIZE           ;
 vdp_clear_loop:                                 ;
-                xor     a
                 out     (VDP_DATA), a           ;
                 dec     bc                      ;
                 ld      a, b                    ;
@@ -39,7 +39,11 @@ vdp_clear_loop:                                 ;
 ;----------------------------------------------------------------------------
 vdp_disable_sprites:
                 ld      de, VRAM_SPR_MAP+1      ; Disable sprites
-                rst     $18                     ;
+				ld      a, e
+				out     (VDP_ADDR), a
+				ld      a, d
+				or      $40
+				out     (VDP_ADDR), a
                 ld      a, VRAM_SPR_LAST        ;
                 out     (VDP_DATA), a           ;
                 ret
@@ -64,7 +68,11 @@ vdp_init_table:
 .section "VDP Load Data" free
 vdp_load_data:
                 push    hl
-                rst     $18                     ; Set VDP address to DE
+				ld      a, e
+				out     (VDP_ADDR), a
+				ld      a, d
+				or      $40
+				out     (VDP_ADDR), a			; Set VDP address to DE
 vdp_load_data_loop:
                 ld      a, (hl)
                 inc     hl
