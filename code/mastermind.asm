@@ -93,12 +93,11 @@ vdp_write_de:
 	
 .ORG   $0018
 .section "Interrupt Vector Write Addr DE" force
-vdp_write_addr_de:
+vdp_write_data_de:
 	ld      a, e
-	out     (VDP_ADDR), a
+	out     (VDP_DATA), a
 	ld      a, d
-	or      $40
-	out     (VDP_ADDR), a
+	out     (VDP_DATA), a
 	ret
 .ends
 	
@@ -1036,10 +1035,8 @@ game_screen_init:
 	; Clear it all out
 	ld		bc, $300
 clear_game_bg_loop:
-	xor		a					; 0x100
-	out		(VDP_DATA), a
-	ld		a, $01				; 0x100
-	out		(VDP_DATA), a
+	ld		de, $0100 ; 0x100
+	rst		$18
 	dec		bc
 	ld		a, c
 	or		b
@@ -1050,768 +1047,526 @@ clear_game_bg_loop:
 	
 	ld		hl, VRAM_BG_MAP+$3A		; first setup
 	rst		$28
-	ld		a, $01
-	out		(VDP_DATA), a
-	out		(VDP_DATA), a
 	
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		de, $0101
+	rst		$18
+	
+	ld		de, $0301
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$78
 	rst		$28
-	ld		a, $02
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $04
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $02
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	
+	ld		de, $0102
+	rst		$18
+	inc		de
+	rst		$18
+	inc		de
+	rst		$18
+	
+	ld		de, $0302
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$84
 	rst		$28
-	ld		a, $05
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $06
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	
+	ld		de, $0105
+	rst		$18
+	inc		de	; $0106
+	rst		$18
 	
 	ld		b, $17
+	inc		de ; $0107
 loop_aa:
-	ld		a, $07
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_aa
 	
-	ld		a, $08
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0A
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0A
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	inc		de	; $0108
+	rst		$18
+	inc		de  ; $0109
+	rst		$18
+	inc		de	; $010A
+	rst		$18
+	ld		d, $03 ; $030A
+	rst		$18
+	ld		e, $09	; $0309
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$C4
 	rst		$28
-	ld		a, $0B
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010B
+	rst		$18
 	
 	ld		b, $8
+	inc		de ; $010C
 loop_bb:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_bb
 	
 	ld		b, $4
+	inc		e ; $XX0D
 loop_cc:
-	ld		a, $0D
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0D
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		d, $01 ; $010D
+	rst		$18
+	ld		d, $03 ; $030D
+	rst		$18
 	djnz	loop_cc
 	
 	ld		b, $8
+	ld		de, $010C
 loop_dd:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_dd
 	
-	ld		a, $0E
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $04
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		de, $010E
+	rst		$18
+	ld		e, $09 ; $0109
+	rst		$18
+	ld		e, $03	; $0103
+	rst		$18
+	ld		e, $04	; $0104
+	rst		$18
+	ld		de, $0309
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$104
 	rst		$28
 	
 	ld		b, $1A
+	ld		de, $010C
 loop_ee:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_ee
 	
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0A
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0A
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		e, $09 ; $0109
+	rst		$18
+	ld		e, $0A	; $010A
+	rst		$18
+	ld		d, $03	; $030A
+	rst		$18
+	ld		e, $09	; $0309
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$144
 	rst		$28
 	
 	ld		b, $1A
+	ld		de, $010C
 loop_ff:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_ff
 	
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $04
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		e, $09	; $0109
+	rst		$18
+	ld		e, $03	; $0103
+	rst		$18
+	ld		e, $04	; $0104
+	rst		$18
+	ld		de, $0309
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$182
 	rst		$28
-	ld		a, $05
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $0105
+	rst		$18
 	
 	ld		b, $09
+	ld		e, $0C ; $010C
 loop_gg:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_gg
 	
 	ld		b, $04
+	ld		e, $0F
 loop_hh:
-	ld		a, $0F
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0F
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		d, $01	; $010F
+	rst		$18
+	ld		d, $03	; $030F
+	rst		$18
 	djnz	loop_hh
 	
 	ld		b, $09
+	ld		de, $010C
 loop_ii:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_ii
 	
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0A
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0A
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	
+	ld		e, $09	; $0109
+	rst		$18
+	ld		e, $0A	; $010A
+	rst		$18
+	ld		d, $03	; $030A
+	rst		$18
+	ld		e, $09	; $0309
+	rst		$18
+
 	ld		hl, VRAM_BG_MAP+$1C2
 	rst		$28
-	ld		a, $0B
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010B
+	rst		$18
+	
 	ld		b, $07
+	ld		e, $0C	; $010C
 loop_jj:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_jj
 	
-	ld		a, $10
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $11
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $12
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $12
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $10
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $10
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $10
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $10
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $13
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $14
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $15
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $11
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		e, $10		; $0110
+	rst		$18
+	
+	inc		e			; $0111
+	rst		$18
+	
+	inc		e			; $0112
+	rst		$18
+	
+	ld		d, $03		; $0312
+	rst		$18
+	
+	ld		de, $0110
+	rst		$18
+	
+	ld		d, $03		;$0310
+	rst		$18
+	
+	ld		d, $01		;$0110
+	rst		$18
+	
+	ld		d, $03		;$0310
+	rst		$18
+	
+	ld		de, $0113	;$0113
+	rst		$18
+	
+	inc		e			;$0114
+	rst		$18
+	
+	inc		e			;$0115
+	rst		$18
+	
+	ld		e, $11		;$0111
+	rst		$18
+	
 	ld		b, $07
+	ld		e, $0C		;$010C
 loop_ll:
-	ld		a, $0c
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_ll
 	
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $04
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		e, $09		;$0109
+	rst		$18
+	ld		e, $03		;$0103
+	rst		$18
+	inc		e			;$0104
+	rst		$18
+	ld		de, $0309	
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$202
 	rst		$28
+	
 	ld		b, $08
+	ld		de, $010C
 loop_mm:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_mm
 	
-	ld		a, $0F
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		e, $0F	;$010F
+	rst		$18
 	
 	ld		b, $0A
+	ld		e, $16	;$0116
 loop_nn:
-	ld		a, $16
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_nn
 	
-	ld		a, $0F
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		de, $030F
+	rst		$18
 	
 	ld		b, $06
+	ld		de, $010C
 loop_oo:
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	rst		$18
 	djnz	loop_oo
 	
-	ld		a, $17
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0A
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	ld		a, $0A
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
-	ld		a, $09
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		e, $17		; $0117
+	rst		$18
+	ld		e, $09
+	rst		$18			; $0109
+	ld		e, $0A
+	rst		$18			; $010A
+	ld		d, $03
+	rst		$18			; $030A
+	ld		e, $09		; $0309
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$242	; offset + 4
 	rst		$28
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	
-	ld		a, $18
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010C
+	rst		$18
 	
-	ld		d, $16
-	ld		e, $19
-	ld		b, $0B					; loop 12 times
+	ld		e, $18	; $0118
+	rst		$18
+	
+	ld		b, $0b					; loop 12 times
 	
 loop_a:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $05
-	out		(VDP_DATA), a
+	ld		de, $0516
+	rst		$18
 	
-	ld		a, e
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	                                
+	ld		de, $0119
+	rst		$18
+
 	djnz	loop_a                  ; loop up to Loop_a
 	
-	ld		a, $16
-	out		(VDP_DATA), a
-	ld		a, $05
-	out		(VDP_DATA), a
+	ld		de, $0516
+	rst		$18
 	
-	ld		b, $05					; Loop a loop of tiles..
 	ld		hl, VRAM_BG_MAP+$274
 	rst		$28						; load it into VDP_ADDR
-	ld		d, $19
 	
+	ld		b, $05					; Loop a loop of tiles..
+	ld		de, $0119
 loop_b:								; Load right-most stuff
-	inc		d
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	inc		e
+	rst		$18
 	djnz	loop_b
 	
 	; Next line..
 	ld		hl, VRAM_BG_MAP+$282
 	rst		$28
-	ld		a, $20
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $0120
+	rst		$18
 
 	ld		b, $0E
-	ld		d, $21
-	ld		e, $22
+	ld		d, $01		; $01XX
 loop_c:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	
-	ld		a, e
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	
+	ld		e, $21		; $0121
+	rst		$18	
+	ld		e, $22		; $0122
+	rst		$18
 	djnz	loop_c
 	
-	ld		a, $20
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		de, $0320
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$2C2
 	rst		$28
-	ld		a, $25
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $0125
+	rst		$18
 	
 	ld		b, $0e
-	ld		d, $26		; use the same tile
+	ld		e, $26		; use the same tile $XX26
 loop_d:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		d, $01		; $0126
+	rst		$18
+
+	ld		d, $03		; $0326
+	rst		$18
 	djnz	loop_d
 	
-	ld		a, $25
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		e, $25		; $0325
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$302
 	rst		$28
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	
-	ld		b, $0e
-	ld		d, $26
+	ld		de, $010C
+	rst		$18
+	
+	ld		b, $0e	; $0E loops
+	ld		e, $26
 loop_e:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $05
-	out		(VDP_DATA), a
+	ld		d, $05	; $0526
+	rst		$18
+	ld		d, $07	; $0726
+	rst		$18
 	
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $07
-	out		(VDP_DATA), a
 	djnz	loop_e
 	
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010C
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$342
 	rst		$28
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	
+	rst		$18		; $010C is already loaded in de..
 	
 	; 2 more lines like this
 	ld		b, $0e
-	ld		d, $26
+	ld		e, $26
 loop_f:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
-	
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		d, $01	; $0126
+	rst		$18
+	ld		d, $03	; $0326
+	rst		$18
 	djnz	loop_f
 	
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010C
+	rst		$18
 
 	ld		hl, VRAM_BG_MAP+$382
 	rst		$28
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	
+	rst		$18		; $010C is already loaded in de..
 	
 	; 2 more lines like this
 	ld		b, $0e
-	ld		d, $26
+	ld		e, $26
 loop_g:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $05
-	out		(VDP_DATA), a
+	ld		d, $05	;$0526
+	rst		$18
+	ld		d, $07	;$0726
+	rst		$18
 	
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $07
-	out		(VDP_DATA), a
 	djnz	loop_g
 	
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010C
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$3C2
 	rst		$28
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	
+	rst		$18		; $010C is already loaded in de..
 	
 	ld		b, $0e
-	ld		d, $26
+	ld		e, $26
 loop_h:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		d, $01
+	rst		$18
+	ld		d, $03
+	rst		$18
 	
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
 	djnz	loop_h
 	
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010C
+	rst		$18
 
 	ld		hl, VRAM_BG_MAP+$402
 	rst		$28
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	
+	rst		$18		; $010C is already loaded in de..
 	
 	ld		b, $0e
-	ld		d, $26
+	ld		e, $26
 loop_i:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $05
-	out		(VDP_DATA), a
+	ld		d, $05	; $0526
+	rst		$18
+	ld		d, $07	; $0726
+	rst		$18
 	
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $07
-	out		(VDP_DATA), a
 	djnz	loop_i
 	
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010C
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$442
 	rst		$28
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	
+	rst		$18		; $010C is already loaded in de..
 	
 	ld		b, $0e
-	ld		d, $26
+	ld		e, $26
 loop_j:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		d, $01	; $0126
+	rst		$18
 	
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		d, $03	; $0326
+	rst		$18
 	djnz	loop_j
 	
-	ld		a, $0C
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $010C
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$482
 	rst		$28
-	ld		a, $34
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	
+	ld		e, $34
+	rst		$18
 	
 	ld		b, $0e
-	ld		d, $26
+	ld		e, $26
 loop_k:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $05
-	out		(VDP_DATA), a
+	ld		d, $05	; $0526
+	rst		$18
+	ld		d, $07	; $0726
+	rst		$18
 	
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $07
-	out		(VDP_DATA), a
 	djnz	loop_k
 	
-	ld		a, $34
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		de, $0334
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$4C2
 	rst		$28
-	ld		a, $35
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	
+	ld		de, $0135
+	rst		$18
 	
 	ld		b, $0e
-	ld		d, $36
-	ld		e, $37
 loop_l:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		e, $36	;$0136
+	rst		$18
+	ld		e, $37	;$0137
+	rst		$18
 	
-	ld		a, e
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	djnz	loop_l
 	
-	ld		a, $35
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		de, $0335
+	rst		$18
 
 ; Load the 3As
-	ld		d, $3A
-	ld		e, $3B
 	ld		hl, VRAM_BG_MAP+$504
 	rst		$28
+	
 	ld		b, $0E
-	
+	ld		d, $01
 loop_m:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		e, $3a 	; $013A
+	rst		$18
+	ld		e, $3b	; $013B
+	rst		$18
 	
-	ld		a, e
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	djnz	loop_m
 	
 ; Load the 3Bs
-	ld		d, $3E
-	ld		e, $3B
-	ld		b, $0E
 	ld		hl, VRAM_BG_MAP+$544
 	rst		$28
 	
+	ld		b, $0E
 loop_n:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		e, $3e	; $013e
+	rst		$18
+	ld		e, $3b	; $013b
+	rst		$18
 	
-	ld		a, e
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	djnz	loop_n
 	
 ; Load the 3Cs
-	ld		d, $3F
-	;ld		e, $3B	; already declared above
-	ld		b, $0E
 	ld		hl, VRAM_BG_MAP+$584
 	rst		$28
 	
+	ld		b, $0E
 loop_o:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		e, $3f	; $013f
+	rst		$18
+	ld		e, $3b	; $013b
+	rst		$18
 	
-	ld		a, e
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	djnz	loop_o
 	
 ; Load the 3Cs
-	ld		d, $40
-	;ld		e, $3B
-	ld		b, $0E
 	ld		hl, VRAM_BG_MAP+$5C4
 	rst		$28
 	
+	ld		b, $0E
 loop_p:
-	ld		a, d
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		e, $40 ; $0140
+	rst		$18
+	ld		e, $3b ; $013b
+	rst		$18
 	
-	ld		a, e
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	djnz	loop_p
 	
 	; Load some start sprites
@@ -1820,23 +1575,14 @@ loop_p:
 	
 	ld		b, $04
 loop_q:
-	ld		a, $10				; X = 80
-	out		(VDP_DATA), a
-	
-	ld		a, $C8				; Tile $00
-	out		(VDP_DATA), a
-	ld		a, $18				; sprite 1, x = $88
-	out		(VDP_DATA), a
-	ld		a, $C9				; Tile $01
-	out		(VDP_DATA), a
-	ld		a, $10				; Sprite 2, x = $80
-	out		(VDP_DATA), a
-	ld		a, $D4				; Tile $0C
-	out		(VDP_DATA), a
-	ld		a, $18				; sprite 3, x = $88
-	out		(VDP_DATA), a
-	ld		a, $D5				; Tile $0D
-	out		(VDP_DATA), a
+	ld		de, $C810			; Tile $00, Sprite 0, X=$80
+	rst		$18
+	ld		de, $C918			; Tile $01, Sprite 1, X=$88
+	rst		$18
+	ld		de, $D410			; Tile $0C, Sprite 2, X=$80
+	rst		$18
+	ld		de, $D518			; Tile $0D, Sprite 3, X=$88
+	rst		$18
 	djnz	loop_q
 	
 	ld		b, $04				;  Counter
@@ -1900,23 +1646,17 @@ loop_t:
 	out		(VDP_DATA), a
 	djnz	loop_t
 	
-	ld		a, $d0				; Stop displaying sprites at this point..
-	out		(VDP_DATA), a
-	ld		a, $00
-	out		(VDP_DATA), a
+	ld		de, $00d0			; Stop displaying sprites at this point..
 	
 	; Set our background on selected row ([$23, $24], $2D, [$38, $39])
 	ld		hl, VRAM_BG_MAP+$284
 	rst		$28
-	ld		a, $23
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	
-	ld		a, $24
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $0123
+	rst		$18
+	
+	inc		de		; $0124
+	rst		$18
 	
 	ld		hl, VRAM_BG_MAP+$2C4
 	rst		$28
@@ -1925,15 +1665,11 @@ loop_t:
 	
 	ld		hl, VRAM_BG_MAP+$4C4
 	rst		$28
-	ld		a, $38
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
 	
-	ld		a, $39
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $0138
+	rst		$18
+	inc		de		; $0139
+	rst		$18
 	
 	ld      de, $81C0                   ; Enable display
 	rst     $10
@@ -1944,32 +1680,22 @@ loop_t:
 	ret
 	
 helper_draw_highlight:
-    ld		a, $2D
-	out		(VDP_DATA), a
-	ld		a, $01
-	out		(VDP_DATA), a
+	ld		de, $012D
+	rst		$18
 	
-	ld		a, $2D
-	out		(VDP_DATA), a
-	ld		a, $03
-	out		(VDP_DATA), a
+	ld		d, $03	; $032D
+	rst		$18
 	
-	ld      de, $40
+	ld      de, $0040
 	add     hl, de
 	rst		$28
 	
-	ld		a, $2D
-	out		(VDP_DATA), a
-	ld		a, $05
-	out		(VDP_DATA), a
+	ld		de, $052D
+	rst		$18
 	
-	ld		a, $2D
-	out		(VDP_DATA), a
-	ld		a, $07
-	out		(VDP_DATA), a
-	
+	ld		d, $07		; $072D
+	rst		$18
 	ret
-
 .ends
 	
 .section "Controller Input Function" free
