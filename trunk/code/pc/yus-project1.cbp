@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="yus-project1" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="../../release/pc/HiveMindD" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../../release/pc/" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add directory="../../../PCDev/SDL2-2.0.3/include" />
+					<Add directory="../../../PCDev/SDL2_image-2.0.0/include" />
+					<Add directory="../../../PCDev/openal-soft-1.15.1-bin/include" />
+				</Compiler>
+				<Linker>
+					<Add option="-static-libgcc -static-libstdc++" />
+					<Add library="SDL2main" />
+					<Add library="SDL2" />
+					<Add library="mingw32" />
+					<Add library="SDL2_image" />
+					<Add library="opengl32" />
+					<Add library="openal32" />
+					<Add directory="../../../PCDev/SDL2-2.0.3/lib/x86" />
+					<Add directory="../../../PCDev/SDL2_image-2.0.0/lib/x86" />
+					<Add directory="../../../PCDev/openal-soft-1.15.1-bin/lib/Win32" />
+				</Linker>
+			</Target>
+			<Target title="Release">
+				<Option output="../../release/pc/HiveMind" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../../release/pc/" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="famiengine/CWaves.cpp" />
+		<Unit filename="famiengine/CWaves.h" />
+		<Unit filename="famiengine/famicore.cpp" />
+		<Unit filename="famiengine/famicore.h" />
+		<Unit filename="famiengine/famiengine.cpp" />
+		<Unit filename="famiengine/famiengine.h" />
+		<Unit filename="famiengine/famisets.cpp" />
+		<Unit filename="famiengine/famisets.h" />
+		<Unit filename="famiengine/famisound.cpp" />
+		<Unit filename="famiengine/famisound.h" />
+		<Unit filename="famiengine/festalon/cart.cpp" />
+		<Unit filename="famiengine/festalon/cart.h" />
+		<Unit filename="famiengine/festalon/driver.h" />
+		<Unit filename="famiengine/festalon/ext/ay.cpp" />
+		<Unit filename="famiengine/festalon/ext/common.h" />
+		<Unit filename="famiengine/festalon/ext/emu2413.cpp" />
+		<Unit filename="famiengine/festalon/ext/emu2413.h" />
+		<Unit filename="famiengine/festalon/ext/emutypes.h" />
+		<Unit filename="famiengine/festalon/ext/fds.cpp" />
+		<Unit filename="famiengine/festalon/ext/mmc5.cpp" />
+		<Unit filename="famiengine/festalon/ext/n106.cpp" />
+		<Unit filename="famiengine/festalon/ext/vrc6.cpp" />
+		<Unit filename="famiengine/festalon/ext/vrc7.cpp" />
+		<Unit filename="famiengine/festalon/ext/vrc7tone.h" />
+		<Unit filename="famiengine/festalon/fcoeffs.h" />
+		<Unit filename="famiengine/festalon/filter.cpp" />
+		<Unit filename="famiengine/festalon/filter.h" />
+		<Unit filename="famiengine/festalon/fir/c44100ntsc.h" />
+		<Unit filename="famiengine/festalon/fir/c44100pal.h" />
+		<Unit filename="famiengine/festalon/fir/c48000ntsc.h" />
+		<Unit filename="famiengine/festalon/fir/c48000pal.h" />
+		<Unit filename="famiengine/festalon/fir/c96000ntsc.h" />
+		<Unit filename="famiengine/festalon/fir/c96000pal.h" />
+		<Unit filename="famiengine/festalon/inttypes.h" />
+		<Unit filename="famiengine/festalon/nsf.cpp" />
+		<Unit filename="famiengine/festalon/nsf.h" />
+		<Unit filename="famiengine/festalon/ops.h" />
+		<Unit filename="famiengine/festalon/sound.cpp" />
+		<Unit filename="famiengine/festalon/sound.h" />
+		<Unit filename="famiengine/festalon/types.h" />
+		<Unit filename="famiengine/festalon/x6502.cpp" />
+		<Unit filename="famiengine/festalon/x6502.h" />
+		<Unit filename="famiengine/festalon/x6502struct.h" />
+		<Unit filename="main.cpp" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
