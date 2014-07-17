@@ -31,13 +31,15 @@ public:
     ~FamiEngine();
     void setVideo(bool); // NTSC or PAL
     void setBg(unsigned int);    // Set Background Color
-    bool init(char*, int, int, bool);    // Window Title, width, height, fullscreen?
+    bool init(char*);    // Window Title, width, height, fullscreen?
     int update();
 
-    void setBGData(int, unsigned char, bool); // tile to change to, and which one?
+    void waitForVsync();    // Emulate NES hardware interrupt for VSYNC
 
-    void loadBG(SDL_Surface *,int,unsigned char); // Surface to copy from, starting tile
-    void loadSPR(SDL_Surface *,int,unsigned char); // Surface to copy from, starting tile
+    void setBGData(int, unsigned int, bool); // tile to change to, and which one?
+
+    void loadBG(const char *); // Surface to copy from, starting tile
+    void loadSPR(const char *); // Surface to copy from, starting tile
 
     bool loadNSF(char * filename) { if ( m_famiSound != NULL ) return m_famiSound->playNSF(filename); return false;}
     void muteNSF(){ if ( m_famiSound != NULL ) m_famiSound->muteNSF(); }
@@ -71,17 +73,13 @@ public:
     void setKey2Button(int, int);
 
     // Play Sound Engine, FamiSound handles itself via OpenAL
-
     SDL_Window * m_sdlScreen;
-    SDL_Surface * m_sdlSurface;
+    SDL_Renderer * m_sdlRenderer;
 
 private:
-    int initGL();
-
     void updateRender();
     int  updateInput();
     void updateSound();
-    void waitTimer();
 
     FamiCore * m_famiCore;      // Core NES types
     FamiSound * m_famiSound;    //
@@ -90,9 +88,10 @@ private:
     unsigned int m_renderHeight; // NTSC = 224, PAL = 240
     int m_screenWidth;
     int m_screenHeight;
-    int gLastFrame;
-    int gLastTick;
-    int m_startTime;
+    int m_screenWidthAspect;
+    int m_screenHeightAspect;
+
+    unsigned int m_startTime;
 
     // SDL goodies
     int m_joy1Num;
@@ -105,14 +104,4 @@ private:
 
     int m_key1Buttons[8]; // A, B, Select, Start, Up, Down, Left, Right
     int m_key2Buttons[8];
-
-    // OpenGL goodies
-    GLuint m_bgTex;         // Background texture
-
-    SDL_Surface * m_nametable1Surf;
-    SDL_Surface * m_nametable2Surf;
-
-    GLuint m_nametable1Tex;
-    GLuint m_nametable2Tex;
-    GLuint m_sprTex;        // Sprites texture
 };

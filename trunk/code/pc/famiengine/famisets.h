@@ -3,7 +3,6 @@
 
 // Everything we'll need
 #include <SDL.h>
-#include <SDL_opengl.h>
 #include <SDL_image.h>
 
 // For getcwd
@@ -33,16 +32,16 @@
 #define K_LEFT        6
 #define K_RIGHT       7
 
-// VRAM is 128x128  (16 * 8) x (16 * 8) or $FF tiles
 #define VRAM_SIZE 256
 #define TILE_SIZE 8
-#define TILE_WIDTH 16
+#define TILE_WIDTH 32
+#define TILE_DIMEN 32*32
 #define OAM_CNT 64
 
 // Sprite OAM data
 struct SpriteOAM
 {
-    unsigned char tile; // Which sprite tile?
+    unsigned int tile; // Which sprite tile?
     unsigned char x;    // SpriteX (8-bit)
     unsigned char y;    // SpriteY (8-bit)
     bool behind;        // display behind background? (1-bit)
@@ -80,6 +79,4 @@ struct FamiRegisters
 #define BMASK 0x00FF0000
 #define AMASK 0xFF000000
 #endif
-
-SDL_Surface *LoadIMG2RGBA(char *filename);
 

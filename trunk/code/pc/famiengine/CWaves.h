@@ -87,7 +87,7 @@ typedef struct tWAVEFORMATEX
     WORD    wBitsPerSample;
     WORD    cbSize;
 } WAVEFORMATEX;
-#endif /* _WAVEFORMATEX_ */
+#endif // _WAVEFORMATEX_
 
 #ifndef _WAVEFORMATEXTENSIBLE_
 #define _WAVEFORMATEXTENSIBLE_
