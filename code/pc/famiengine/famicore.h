@@ -14,36 +14,28 @@ public:
     FamiCore();
     ~FamiCore();
 
-    bool setBGTile(int, unsigned char, bool);
+    bool setBGTile(int, unsigned int, bool);
     SpriteOAM * OAM(unsigned char);
     FamiRegisters * registers();
+    void loadBGVRAM(SDL_Renderer *, SDL_Surface*);
+    void loadSPRVRAM(SDL_Renderer *, SDL_Surface*);
+    unsigned int * getNameTable(bool);
+    unsigned int getTile(int, bool);
 
-    SDL_Surface * getBGVRAM(){ return m_bgVRAM;}
-    SDL_Surface * getSPRVRAM(){ return m_sprVRAM; }
-
-    unsigned char * getNameTable(bool);
-
-    unsigned char getTile(int, bool);
+// Move these out of public when we don't want to debug
+    SDL_Texture * m_sprVRAM;    // Sprites - where we copy from
+    SDL_Texture * m_bgVRAM;     // Background - where we copy from
 
 private:
 
-    // Name Table 1 - Top Left
-    unsigned char m_nameTable1[0x3C0]; // (256 * 240 / 8)
+    // Name Table 1 - Top Left, Name Table 3 - Mirror of Top left
+    unsigned int m_nameTable1[0x3C0]; // (256 * 240 / 8)
 
-    // Name Table 2 - Top Right
-    unsigned char m_nameTable2[0x3C0]; // (256 * 240 / 8)
-
-    // Name Table 3 - Mirror of Top Left
-    // Name Table 4 - Mirror of Top Right
+    // Name Table 2 - Top Right, Name Table 4 - Mirror of Top Right
+    unsigned int m_nameTable2[0x3C0]; // (256 * 240 / 8)
 
     // Sprite OAM
     SpriteOAM m_spriteOAM[OAM_CNT]; // 64 sprites
-
-    // Sprite VRAM - $0xFF sprites in VRAM, or 255 sprites (8x8)
-    SDL_Surface * m_sprVRAM;    // Sprites - where we copy from
-
-    // Background VRAM - $0xFF backgrounds in VRAM, or 255 tiles (8x8)
-    SDL_Surface * m_bgVRAM;     // Background - where we copy from
 
     // Famicom Registers
     FamiRegisters m_famiRegisters;

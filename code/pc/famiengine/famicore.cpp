@@ -6,8 +6,9 @@ FamiCore::FamiCore()
     memset(m_nameTable2, 0, 0x3C0);
     memset(m_spriteOAM, 0, sizeof(SpriteOAM)*OAM_CNT);
 
-    m_sprVRAM = SDL_CreateRGBSurface(0, VRAM_SIZE, VRAM_SIZE, 32, RMASK, GMASK, BMASK, AMASK);
-    m_bgVRAM = SDL_CreateRGBSurface(0, VRAM_SIZE, VRAM_SIZE, 32, RMASK, GMASK, BMASK, AMASK);
+    // Create our textures from this surface
+    m_sprVRAM = NULL;
+    m_bgVRAM = NULL;
 
     memset(&m_famiRegisters, 0, sizeof(FamiRegisters));
 }
@@ -15,8 +16,10 @@ FamiCore::FamiCore()
 FamiCore::~FamiCore()
 {
     // Free some of our memory
-    SDL_FreeSurface(m_sprVRAM);
-    SDL_FreeSurface(m_bgVRAM);
+    if ( m_sprVRAM != NULL )
+        SDL_DestroyTexture(m_sprVRAM);
+    if ( m_bgVRAM != NULL )
+        SDL_DestroyTexture(m_bgVRAM);
 }
 
 SpriteOAM * FamiCore::OAM(unsigned char sprIdx)
@@ -26,24 +29,34 @@ SpriteOAM * FamiCore::OAM(unsigned char sprIdx)
     return NULL;
 }
 
-bool FamiCore::setBGTile(int tileIdx, unsigned char tile, bool nameTable)
+bool FamiCore::setBGTile(int tileIdx, unsigned int tile, bool nameTable)
 {
-    unsigned char * writeTable = NULL;
+    unsigned int * writeTable = NULL;
     if ( nameTable == FC_NAMETABLE1 )
         writeTable = m_nameTable1;
     else if ( nameTable == FC_NAMETABLE2 )
         writeTable = m_nameTable2;
     if ( tileIdx < 0x3C0 && writeTable)
     {
-        writeTable[tileIdx] = tile;
+        writeTable[tileIdx] = tile - 1;
         return true; // everything went fine
     }
     return false;
 }
 
-unsigned char * FamiCore::getNameTable(bool nameTable)
+void FamiCore::loadBGVRAM(SDL_Renderer * renderer, SDL_Surface* surf)
 {
-    unsigned char * retTable = NULL;
+    m_bgVRAM = SDL_CreateTextureFromSurface(renderer, surf);
+}
+
+void FamiCore::loadSPRVRAM(SDL_Renderer * renderer, SDL_Surface* surf)
+{
+    m_sprVRAM = SDL_CreateTextureFromSurface(renderer, surf);
+}
+
+unsigned int * FamiCore::getNameTable(bool nameTable)
+{
+    unsigned int * retTable = NULL;
     if ( nameTable == FC_NAMETABLE1 )
         retTable = m_nameTable1;
     else if ( nameTable == FC_NAMETABLE2 )
@@ -51,9 +64,9 @@ unsigned char * FamiCore::getNameTable(bool nameTable)
     return retTable;
 }
 
-unsigned char FamiCore::getTile(int idx, bool nameTable)
+unsigned int FamiCore::getTile(int idx, bool nameTable)
 {
-    unsigned char * readTable = NULL;
+    unsigned int * readTable = NULL;
     if ( nameTable == FC_NAMETABLE1 )
         readTable = m_nameTable1;
     else if ( nameTable == FC_NAMETABLE2 )

@@ -1,5 +1,7 @@
 #include "famiengine.h"
 
+#include <queue>
+
 // Keep this here?
 bool fullscreen;
 
@@ -18,8 +20,13 @@ FamiEngine::FamiEngine()
     m_famiWidth = 256;      // both NTSC and PAL respect this
     m_famiHeight = 240;
     m_renderHeight = VID_NTSC;
-    m_screenWidth = 640;    // default for now
+    m_screenWidth = 512;    // default for now
     m_screenHeight = 480;
+
+    // Aspect used for converting from 256x240 to our screen
+    m_screenWidthAspect = m_screenWidth / m_famiWidth;
+    m_screenHeightAspect = m_screenHeight / m_renderHeight;
+
     m_famiCore = NULL;      // nothing yet
     m_famiSound = NULL;
 }
@@ -36,11 +43,6 @@ FamiEngine::~FamiEngine()
         delete m_famiSound;
     }
 
-    glDeleteTextures( 1, &m_sprTex );
-    glDeleteTextures( 1, &m_bgTex );
-    glDeleteTextures( 1, &m_nametable1Tex );
-    glDeleteTextures( 1, &m_nametable2Tex );
-
     if ( m_joy1 )
     {
         SDL_JoystickClose(m_joy1);
@@ -50,101 +52,21 @@ FamiEngine::~FamiEngine()
         SDL_JoystickClose(m_joy2);
     }
 
+    SDL_DestroyRenderer( m_sdlRenderer );
+    SDL_DestroyWindow(m_sdlScreen);
+
     // Shutdown
+    IMG_Quit();
     SDL_Quit(); // Tell SDL to quit
-}
-
-bool CreateGLWindow(FamiEngine * fe, char* title, int width, int height, int bits, bool fullscreenflag)
-{
-    Uint32 flags;
-    //int size;
-
-    fullscreen = fullscreenflag;	// Set The Global Fullscreen Flag
-    flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
-    if ( fullscreenflag ) {
-        flags |= SDL_WINDOW_FULLSCREEN;
-    }
-    //Use OpenGL 2.1
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 1 );
-    //SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
-    //SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
-    //SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
-    //SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, bits);
-    //SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1);
-
-    //SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 1 );
-    /*
-    if ( SDL_SetVideoMode(width, height, bits, flags) == NULL )
-    {
-    return false;
-    }
-
-    SDL_WM_SetCaption(title, "opengl");
-    */
-    fe->m_sdlScreen = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags);
-    fe->m_sdlSurface = SDL_GetWindowSurface(fe->m_sdlScreen);
-    SDL_GL_CreateContext(fe->m_sdlScreen);
-    SDL_ShowCursor(false); // hide our cursor
-
-    //ReSizeGLScene(width, height);		// Set Up Our Perspective GL Screen
-    return true;				// Success
 }
 
 void FamiEngine::setBg(unsigned int newColor)
 {
     m_famiCore->registers()->bgColor = newColor;
+    SDL_SetRenderDrawColor( m_sdlRenderer, (newColor&0xFF0000)>>16, (newColor&0x00FF00)>>8, (newColor&0x0000FF), 0xFF );
 }
 
-int FamiEngine::initGL()			// All Setup For OpenGL Goes Here
-{
-	glViewport(0, 0,m_screenWidth, m_screenHeight);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0,m_famiWidth, m_renderHeight, 0, 0.0f, 1.0f); // 0,w,h,0 makes it top left,  0,w,0,h makes it bottom left
-	//gluOrtho2D(0,240,0,248);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glEnable(GL_TEXTURE_2D);
-	glColor4f(1.0f, 1.0f, 1.0, 1.0f);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	return true;						// Initialization Went OK
-}
-
-static void copy_row(const unsigned char *start, const unsigned char *end, unsigned char *dest)
-{
-    if(start != end) for(;;)
-    {
-        // This is a quickie blending technique to blend alphas
-        /*
-        unsigned char a = start[3];
-        unsigned char ia = ~a;
-        unsigned char ias = ~dest[3];
-
-        dest[0] = (start[0]*a+dest[0]*ia)>>8;
-        dest[1] = (start[1]*a+dest[1]*ia)>>8;
-        dest[2] = (start[2]*a+dest[2]*ia)>>8;
-        dest[3] = ~((ias*ia)>>8);
-
-        */
-        // Straight copy
-        dest[0] = start[0];
-        dest[1] = start[1];
-        dest[2] = start[2];
-        dest[3] = start[3];
-
-        if((start += 4) == end)
-         return;
-
-        dest += 4;
-    }
-}
-
-bool FamiEngine::init(char * title, int width, int height, bool fullScreen)
+bool FamiEngine::init(char * title)
 {
    /* Initialize SDL */
     if ( SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_AUDIO) < 0 ) {
@@ -155,18 +77,21 @@ bool FamiEngine::init(char * title, int width, int height, bool fullScreen)
     m_famiSound = new FamiSound();
     m_famiSound->initSound();
 
-    // Init our GL window
-    if ( CreateGLWindow(this, title, width, height, 32, fullScreen) == false )
-    {
-        return false;
-    }
+    Uint32 flags;
+    flags = SDL_WINDOW_SHOWN;
 
-    m_screenWidth = width;
-    m_screenHeight = height;
+    SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );  //Set texture filtering to linear
+    m_sdlScreen = SDL_CreateWindow(title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, m_screenWidth, m_screenHeight, flags);
+    m_sdlRenderer = SDL_CreateRenderer(m_sdlScreen, -1, SDL_RENDERER_ACCELERATED);
 
+    // Default background to white
+    SDL_SetRenderDrawColor( m_sdlRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
 
-    // Init all our screen stuff
-    initGL();
+    SDL_ShowCursor(false); // hide our cursor
+
+    //Initialize PNG loading
+    int imgFlags = IMG_INIT_PNG;
+    IMG_Init( imgFlags );
 
     // Init our engine
     m_famiCore = new FamiCore();
@@ -176,17 +101,6 @@ bool FamiEngine::init(char * title, int width, int height, bool fullScreen)
 
     // Zero out the joystick input
     m_famiCore->registers()->joy1 = m_famiCore->registers()->joy2 = 0;
-
-    // Create our textures
-    glGenTextures( 1, &m_bgTex);
-    glGenTextures( 1, &m_nametable1Tex );
-    glGenTextures( 1, &m_nametable2Tex );
-    glGenTextures( 1, &m_sprTex );
-
-    m_nametable1Surf = SDL_CreateRGBSurface(0, 256, 256, 32,
-                        RMASK, GMASK, BMASK, AMASK);
-    m_nametable2Surf = SDL_CreateRGBSurface(0, 256, 256, 32,
-                        RMASK, GMASK, BMASK, AMASK);
 
     // Init the joysticks, these can be changed later by the player
     int numJoys = SDL_NumJoysticks();
@@ -228,8 +142,7 @@ bool FamiEngine::init(char * title, int width, int height, bool fullScreen)
     m_key1Buttons[K_RIGHT] = SDLK_RIGHT;
 
     // init some timing stuff
-    gLastTick = SDL_GetTicks();
-    m_startTime = gLastTick;
+    m_startTime = SDL_GetTicks();
 
     return true;
 }
@@ -298,149 +211,41 @@ void FamiEngine::setVideo(bool videoMode)
     {
         m_renderHeight = VID_PAL;
     }
-    // Change the size of our projection
-    glOrtho(0,m_famiWidth, m_renderHeight, 0, 0.0f, 1.0f);
+    // Set our render to stretch this given mode
 }
 
-void FamiEngine::setBGData(int idx, unsigned char tile, bool nameTable)
+void FamiEngine::setBGData(int idx, unsigned int tile, bool nameTable)
 {
     m_famiCore->setBGTile(idx, tile, nameTable);
-    SDL_Surface * surf;
-    GLuint tex;
-
-    // copy onto our name table
-    if ( nameTable == FC_NAMETABLE1 )
-    {
-        surf = m_nametable1Surf;
-        tex = m_nametable1Tex;
-    }
-    else
-    {
-        surf = m_nametable2Surf;
-        tex = m_nametable2Tex;
-    }
-
-    // RGBA = 4 bytes per pixel
-    SDL_Surface * vram = m_famiCore->getBGVRAM();
-
-    unsigned int srcPixHeight = (tile/TILE_SIZE)*(vram->pitch*TILE_SIZE);
-    unsigned int srcPtr = (unsigned int)vram->pixels + (srcPixHeight + (tile%TILE_SIZE)*32);// + (unsigned int)(((unsigned char)(tile/8))*32*4 + (tile%8)*(4*8));
-
-    // debug
-    unsigned int dstPixHeight = (idx/32)*(surf->pitch*TILE_SIZE);
-    unsigned int dstPtr = (unsigned int)surf->pixels + (dstPixHeight + (idx%32)*32);
-
-    for(int z = 0; z < TILE_SIZE;z++)
-    {
-        copy_row((const unsigned char*)srcPtr, (unsigned char*)(srcPtr + 32), (unsigned char*)dstPtr);
-        srcPtr += vram->pitch;
-        dstPtr += surf->pitch;
-    }
-
-    // Copy our VRAM to the background texture
-    // Bind the texture object
-    glBindTexture( GL_TEXTURE_2D, tex );
-
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST  );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST  );
-
-    // Edit the texture object's image data using the information SDL_Surface gives us
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, surf->w, surf->h, 0,
-                      GL_RGBA, GL_UNSIGNED_BYTE, surf->pixels );
 }
 
 // Surface to copy from, how many tiles we want to pull, tile index to copy into
-void FamiEngine::loadSPR(SDL_Surface * surf, int tileCopyCnt, unsigned char tileIdx)
+void FamiEngine::loadSPR(const char * path)
 {
-    // Copy 8x8 at a time based on surface width & height
-    if ( ((tileIdx+tileCopyCnt) < 0xFF) &&                  // Not over 0xFF tiles
-            (surf->w % TILE_SIZE == 0) && (surf->h % TILE_SIZE == 0))     // Surface is divisible by 8
+    SDL_Surface * surf = IMG_Load(path);
+    if ( surf == NULL )
     {
-        unsigned int x, y, xx, yy;
-        SDL_Surface * dst = m_famiCore->getSPRVRAM();
-        // Move through each tile plus the offset
-        for(unsigned char i = tileIdx; i < (tileIdx+tileCopyCnt); i++)
-        {
-            x = (unsigned int)(i%TILE_SIZE) * TILE_SIZE;
-            y = (unsigned int)(i/TILE_SIZE) * TILE_SIZE;
-
-            xx = (unsigned int)((i-tileIdx)%(surf->w/TILE_SIZE)) *TILE_SIZE;
-            yy = (unsigned int)((i-tileIdx)/(surf->h/TILE_SIZE)) *TILE_SIZE;
-
-            unsigned int surfPtr = (unsigned int)surf->pixels + xx*4 + (yy*surf->pitch);
-            unsigned int dstPtr = (unsigned int)dst->pixels + x*4 + (y*dst->pitch);
-            for(int z = 0;z < TILE_SIZE;z++)
-            {
-                copy_row((const unsigned char*)surfPtr, (unsigned char*)(surfPtr + TILE_SIZE*4), (unsigned char*)dstPtr);
-                surfPtr += surf->pitch;
-                dstPtr += dst->pitch;
-            }
-        }
-
-        // Copy our VRAM to the background texture
-        // Bind the texture object
-        glBindTexture( GL_TEXTURE_2D, m_sprTex );
-
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST  );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST  );
-
-        // Edit the texture object's image data using the information SDL_Surface gives us
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, dst->w, dst->h, 0,
-                          GL_RGBA, GL_UNSIGNED_BYTE, dst->pixels );
+        printf("Could not load sprite surface %s\n", path);
+        return;
     }
+    m_famiCore->loadSPRVRAM(m_sdlRenderer, surf);
+    SDL_FreeSurface(surf);
 }
 
 // Surface to copy from, how many tiles we want to pull, tile index to copy into
-void FamiEngine::loadBG(SDL_Surface * surf, int tileCopyCnt, unsigned char tileIdx)
+void FamiEngine::loadBG(const char * path)
 {
-    // Copy some pixels!
-    // Copy 8x8 at a time based on surface width & height
-    //unsigned char tileOffY = (tileIdx/8) * 8;   // this looks like it should cancel, but because its an
-                                                // unsigned char, it cannot cancel.
-    if ( ((tileIdx+tileCopyCnt) < 0xFF) &&                  // Not over 0xFF tiles
-            (surf->w % TILE_SIZE == 0) && (surf->h % TILE_SIZE == 0))    // Surface is divisible by 8
+    char buf[MAX_PATH];
+    getcwd(buf, MAX_PATH);
+    strcat(buf, path);
+    SDL_Surface * surf = IMG_Load(buf);
+    if ( surf == NULL )
     {
-        unsigned int x, y, xx, yy;
-        SDL_Surface * dst = m_famiCore->getBGVRAM();
-        // Move through each tile plus the offset
-        for(unsigned char i = tileIdx; i < (tileIdx+tileCopyCnt); i++)
-        {
-            x = (unsigned int)(i%TILE_SIZE) * TILE_SIZE;
-            y = (unsigned int)(i/TILE_SIZE) * TILE_SIZE;
-
-            xx = (unsigned int)((i-tileIdx)%(surf->w/TILE_SIZE)) *TILE_SIZE;
-            yy = (unsigned int)((i-tileIdx)/(surf->h/TILE_SIZE)) *TILE_SIZE;
-
-            unsigned int surfPtr = (unsigned int)surf->pixels + xx*4 + (yy*surf->pitch);
-            unsigned int dstPtr = (unsigned int)dst->pixels + x*4 + (y*dst->pitch);
-            for(int z = 0;z < TILE_SIZE;z++)
-            {
-                copy_row((const unsigned char*)surfPtr, (unsigned char*)(surfPtr + TILE_SIZE*4), (unsigned char*)dstPtr);
-                surfPtr += surf->pitch;
-                dstPtr += dst->pitch;
-            }
-        }
-
-        // Copy our VRAM to the background texture
-        // Bind the texture object
-        glBindTexture( GL_TEXTURE_2D, m_bgTex );
-
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST  );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST  );
-
-        // Edit the texture object's image data using the information SDL_Surface gives us
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, dst->w, dst->h, 0,
-                          GL_RGBA, GL_UNSIGNED_BYTE, dst->pixels );
-
-        // Reload our name tables
-        unsigned char * nt1 = m_famiCore->getNameTable(FC_NAMETABLE1);
-        unsigned char * nt2 = m_famiCore->getNameTable(FC_NAMETABLE2);
-        for (int i = 0; i < 0x3C0; i++)
-        {
-            setBGData(i, nt1[i], FC_NAMETABLE1);
-            setBGData(i, nt2[i], FC_NAMETABLE2);
-        }
+        printf("Could not load background surface %s\n", buf);
+        return;
     }
+    m_famiCore->loadBGVRAM(m_sdlRenderer, surf);
+    SDL_FreeSurface(surf);
 }
 
 
@@ -499,7 +304,7 @@ int FamiEngine::update()
     }
 
     // Wait for NES like timing (30 fps)
-    waitTimer();
+    //waitTimer();
 
     return FAMI_IDLE;
 }
@@ -511,67 +316,44 @@ void FamiEngine::updateSound()
 
 void FamiEngine::updateRender()
 {
-    // Clear Screen, Depth Buffer
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //Clear screen
+    SDL_RenderClear( m_sdlRenderer );
 
-    // Draw the Background Color (default - black)
-    glDisable(GL_TEXTURE_2D);
-    unsigned int bColor = m_famiCore->registers()->bgColor; // background color
-    glColor3ub((bColor&0xFF0000)>>24,(bColor&0x00FF00)>>16,(bColor&0x000FF)>>8);
-	glBegin(GL_QUADS);
-        glVertex3i(0, 0, 0);
-        glVertex3i(0, m_famiHeight, 0);
-        glVertex3i(m_famiWidth, m_famiHeight, 0);
-        glVertex3i(m_famiWidth, 0, 0);
-	glEnd();
-
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-
-	// Enable the textures again
-    glEnable(GL_TEXTURE_2D);
+    //SDL_RenderCopy(m_sdlRenderer, m_famiCore->m_bgVRAM, NULL, NULL);
 
     SpriteOAM * spr;
-    float fx, fy, tx0, ty0, tx1, ty1;
-    glBindTexture(GL_TEXTURE_2D, m_sprTex);
-    // Find any sprites that need to go behind the background
-    for(int i = 0; i < OAM_CNT; i++)
+    SDL_Rect src, dst;
+    src.w = TILE_SIZE;
+    src.h = TILE_SIZE;
+    dst.w = TILE_SIZE * m_screenWidthAspect;
+    dst.h = TILE_SIZE * m_screenHeightAspect;
+    SDL_Texture * sprTex = m_famiCore->m_sprVRAM;
+    std::queue<SpriteOAM*> secondDraw;
+    for ( int i = 0; i < OAM_CNT; i++)
     {
         spr = m_famiCore->OAM(i);
-        if (spr->behind == true )
+        if ( spr->behind == true )
         {
-            fx = (int)(spr->tile%TILE_SIZE)*TEXTURE_RATIO;
-            fy = (int)(spr->tile/TILE_SIZE)*TEXTURE_RATIO;
-            if ( spr->flipX == true )
+            src.x = (i % TILE_WIDTH)*TILE_SIZE;
+            src.y = (i / TILE_WIDTH)*TILE_SIZE;
+            dst.x = spr->x * m_screenWidthAspect;
+            dst.y = spr->y * m_screenHeightAspect;
+            /*
+            if ( spr->flipX == true && spr->flipY == true )
             {
-                tx0 = fx+TEXTURE_RATIO;
-                tx1 = fx;
             }
-            else
+            else if ( spr->flipX == true )
             {
-                tx0 = fx;
-                tx1 = fx+TEXTURE_RATIO;
             }
-            if ( spr->flipY == true )
+            else if ( spr->flipY == true )
             {
-                ty0 = fy+TEXTURE_RATIO;
-                ty1 = fy;
             }
-            else
-            {
-                ty0 = fy;
-                ty1 = fy+TEXTURE_RATIO;
-            }
-            // Draw this sprite
-            glBegin(GL_QUADS);
-                glTexCoord2f(tx0, ty0);
-                glVertex3i(spr->x, spr->y, 0);
-                glTexCoord2f(tx0, ty1);
-                glVertex3i(spr->x, spr->y + 8, 0);
-                glTexCoord2f(tx1, ty1);
-                glVertex3i(spr->x+8, spr->y + 8, 0);
-                glTexCoord2f(tx1, ty0);
-                glVertex3i(spr->x+8, spr->y, 0);
-            glEnd();
+            */
+            SDL_RenderCopy(m_sdlRenderer, sprTex, &src, &dst);
+        }
+        else
+        {
+            secondDraw.push(spr);
         }
     }
 
@@ -601,107 +383,86 @@ void FamiEngine::updateRender()
         b = m_famiHeight;
 
     // NAME TABLE 1
-    glBindTexture(GL_TEXTURE_2D, m_nametable1Tex);
-    glBegin(GL_QUADS);
-        glTexCoord2f(.0f, .0f);
-        glVertex3i(xOffset+l, yOffset+t, 0);
-        glTexCoord2f(.0f, 1.0f);
-        glVertex3i(xOffset+l, yOffset+t + 256, 0);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex3i(xOffset+l + 256, yOffset+t + 256, 0);
-        glTexCoord2f(1.0f, .0f);
-        glVertex3i(xOffset+l + 256, yOffset+t, 0);
-    glEnd();
-
-    // NAME TABLE 3 - [Mirror of NAME TABLE 1]
-    glBindTexture(GL_TEXTURE_2D, m_nametable1Tex);
-    glBegin(GL_QUADS);
-        glTexCoord2f(.0f, .0f);
-        glVertex3i(xOffset+l, yOffset+b, 0);
-        glTexCoord2f(.0f, 1.0f);
-        glVertex3i(xOffset+l, yOffset+b + 256, 0);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex3i(xOffset+l + 256, yOffset+b + 256, 0);
-        glTexCoord2f(1.0f, .0f);
-        glVertex3i(xOffset+l + 256, yOffset+b, 0);
-    glEnd();
-
-    // NAME TABLE 2
-    glBindTexture(GL_TEXTURE_2D, m_nametable2Tex);
-    glBegin(GL_QUADS);
-        glTexCoord2f(.0f, .0f);
-        glVertex3i(xOffset+r, yOffset+t, 0);
-        glTexCoord2f(.0f, 1.0f);
-        glVertex3i(xOffset+r, yOffset+t + 256, 0);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex3i(xOffset+r + 256, yOffset+t + 256, 0);
-        glTexCoord2f(1.0f, .0f);
-        glVertex3i(xOffset+r + 256, yOffset+t, 0);
-    glEnd();
-
-    // NAME TABLE 4 - [Mirror of NAME TABLE 2]
-    glBindTexture(GL_TEXTURE_2D, m_nametable2Tex);
-    glBegin(GL_QUADS);
-        glTexCoord2f(.0f, .0f);
-        glVertex3i(xOffset+r, yOffset+b, 0);
-        glTexCoord2f(.0f, 1.0f);
-        glVertex3i(xOffset+r, yOffset+b + 256, 0);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex3i(xOffset+r + 256, yOffset+b + 256, 0);
-        glTexCoord2f(1.0f, .0f);
-        glVertex3i(xOffset+r + 256, yOffset+b, 0);
-    glEnd();
-
-    // Draw sprites in OAM that are not behind the background
-    glBindTexture(GL_TEXTURE_2D, m_sprTex);
-    // Find any sprites that need to go behind the background
-    for(int i = 0; i < OAM_CNT; i++)
+    unsigned int * nt1 = m_famiCore->getNameTable(0);
+    unsigned int * nt2 = m_famiCore->getNameTable(1);
+    for(int i = 0; i < 0x3C0; i++)
     {
-        spr = m_famiCore->OAM(i);
-        if (spr->behind == false )
+        // NAME TABLE 1
+        src.x = (nt1[i] % TILE_WIDTH) * TILE_SIZE;
+        src.y = (nt1[i] / TILE_WIDTH) * TILE_SIZE;
+        dst.x = (i % TILE_WIDTH) * TILE_SIZE * m_screenWidthAspect;
+        dst.y = (i / TILE_WIDTH) * TILE_SIZE * m_screenHeightAspect;
+        SDL_RenderCopy(m_sdlRenderer, m_famiCore->m_bgVRAM, &src, &dst);
+
+        // NAME TABLE 3
+        src.x = (nt1[i] % TILE_WIDTH) * TILE_SIZE;
+        src.y = (nt1[i] / TILE_WIDTH) * TILE_SIZE;
+        dst.x = (i % TILE_WIDTH) * TILE_SIZE * m_screenWidthAspect;
+        dst.y = ((i / TILE_WIDTH) * TILE_SIZE + m_famiHeight) * m_screenHeightAspect;
+        SDL_RenderCopy(m_sdlRenderer, m_famiCore->m_bgVRAM, &src, &dst);
+
+        // NAME TABLE 2
+        src.x = (nt2[i] % TILE_WIDTH) * TILE_SIZE;
+        src.y = (nt2[i] / TILE_WIDTH) * TILE_SIZE;
+        dst.x = ((i % TILE_WIDTH) * TILE_SIZE + m_famiWidth) * m_screenWidthAspect;
+        dst.y = (i / TILE_WIDTH) * TILE_SIZE * m_screenHeightAspect;
+        SDL_RenderCopy(m_sdlRenderer, m_famiCore->m_bgVRAM, &src, &dst);
+
+        // NAME TABLE 4 - [Mirror of NAME TABLE 2]
+        src.x = (nt2[i] % TILE_WIDTH) * TILE_SIZE;
+        src.y = (nt1[i] / TILE_WIDTH) * TILE_SIZE;
+        dst.x = ((i % TILE_WIDTH) * TILE_SIZE + m_famiWidth) * m_screenWidthAspect;
+        dst.y = ((i / TILE_WIDTH) * TILE_SIZE + m_famiHeight) * m_screenHeightAspect;
+        SDL_RenderCopy(m_sdlRenderer, m_famiCore->m_bgVRAM, &src, &dst);
+
+    }
+    // Now draw the front
+    while ( !secondDraw.empty() )
+    {
+        spr = secondDraw.front();
+        secondDraw.pop();
+        src.x = (spr->tile % TILE_WIDTH)*TILE_SIZE;
+        src.y = (spr->tile / TILE_WIDTH)*TILE_SIZE;
+        dst.x = spr->x * m_screenWidthAspect;
+        dst.y = spr->y * m_screenHeightAspect;
+        /*
+        if ( spr->flipX == true )
         {
-            fx = (int)(spr->tile%8)*TEXTURE_RATIO;
-            fy = (int)(spr->tile/8)*TEXTURE_RATIO;
-            if ( spr->flipX == true )
-            {
-                tx0 = fx+TEXTURE_RATIO;
-                tx1 = fx;
-            }
-            else
-            {
-                tx0 = fx;
-                tx1 = fx+TEXTURE_RATIO;
-            }
-            if ( spr->flipY == true )
-            {
-                ty0 = fy+TEXTURE_RATIO;
-                ty1 = fy;
-            }
-            else
-            {
-                ty0 = fy;
-                ty1 = fy+TEXTURE_RATIO;
-            }
-            // Draw this sprite
-            glBegin(GL_QUADS);
-                glTexCoord2f(tx0, ty0);
-                glVertex3i(spr->x, spr->y, 0);
-                glTexCoord2f(tx0, ty1);
-                glVertex3i(spr->x, spr->y + 8, 0);
-                glTexCoord2f(tx1, ty1);
-                glVertex3i(spr->x+8, spr->y + 8, 0);
-                glTexCoord2f(tx1, ty0);
-                glVertex3i(spr->x+8, spr->y, 0);
-            glEnd();
+            src.x = (i % TILE_WIDTH)*TILE_SIZE;
+            src.y = (i / TILE_WIDTH)*TILE_SIZE;
+            dst.x = spr->x * m_screenWidthAspect;
+            dst.y = spr->y * m_screenHeightAspect;
         }
+        else
+        {
+            src.x = (i % TILE_WIDTH)*TILE_SIZE;
+            src.y = (i / TILE_WIDTH)*TILE_SIZE;
+            dst->x = spr->x * m_screenWidthAspect;
+            dst->y = spr->y * m_screenHeightAspect;
+        }
+        if ( spr->flipY == true )
+        {
+            src->x = (i % TILE_WIDTH)*TILE_SIZE;
+            src->y = (i / TILE_WIDTH)*TILE_SIZE;
+            dst->x = spr->x * m_screenWidthAspect;
+            dst->y = spr->y * m_screenHeightAspect;
+        }
+        else
+        {
+            src->x = (i % TILE_WIDTH)*TILE_SIZE;
+            src->y = (i / TILE_WIDTH)*TILE_SIZE;
+            dst->x = spr->x * m_screenWidthAspect;
+            dst->y = spr->y * m_screenHeightAspect;
+        }
+        */
+        SDL_RenderCopy(m_sdlRenderer, sprTex, &src, &dst);
     }
 
-    //glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    //glFlush();
-    //SDL_GL_SwapBuffers();
-    SDL_GL_SwapWindow(m_sdlScreen);
-    // Rendering done
+    // lets see the BG image load
+//    SDL_RenderCopy(m_sdlRenderer, m_famiCore->m_bgVRAM, NULL, NULL);
 
+    //Update screen
+    SDL_RenderPresent( m_sdlRenderer );
 }
 
 int FamiEngine::updateInput()
@@ -955,10 +716,12 @@ void FamiEngine::setScrollYNT(int scrY)
     m_famiCore->registers()->scrollY_NT = scrY;
 }
 
-void FamiEngine::waitTimer()
+void FamiEngine::waitForVsync()
 {
     if((SDL_GetTicks() - m_startTime) < 1000.0/FAMICOM_FPS)
+    {
         SDL_Delay(int(1000.0/FAMICOM_FPS - (SDL_GetTicks() - m_startTime)));
+    }
 
     m_startTime = SDL_GetTicks();
 }
